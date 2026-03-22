@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guitar Music Theory Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Barlow+Semi+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles/main.css?v=4">
+  <link rel="stylesheet" href="styles/fretboard.css?v=3">
+  <link rel="stylesheet" href="styles/panels.css?v=11">
+  <link rel="stylesheet" href="styles/circle-of-fifths.css?v=2">
+</head>
+<body>
+  <div class="dashboard">
+
+    <!-- ── Header ── -->
+    <header class="header-bar">
+      <div class="header-title">
+        <span class="header-icon">🎸</span>
+        <h1>Guitar Music Theory Dashboard</h1>
+      </div>
+      <div class="header-actions">
+        <button id="btn-glossary" class="btn btn-ghost">📖 Glossary</button>
+        <div class="header-actions-sep"></div>
+        <button id="btn-clear-progression" class="btn btn-ghost">Clear Progression</button>
+        <button id="btn-clear-all" class="btn btn-danger" title="Removes all chords and resets key detection">Clear All</button>
+      </div>
+    </header>
+
+    <div class="dashboard-body">
+
+      <!-- ═══════════════════════════════════════════════
+           LEFT COLUMN — Instrument & Current Chord
+           ═══════════════════════════════════════════════ -->
+      <div class="dashboard-col-left">
+
+        <!-- ── Tuning Controls ── -->
+        <section class="tuning-section panel">
+          <div class="tuning-header">
+            <span class="section-label">Tuning</span>
+            <div class="tuning-presets" id="tuning-presets">
+              <!-- Preset buttons injected by tuning.js -->
+            </div>
+          </div>
+          <div class="tuning-strings" id="tuning-strings">
+            <!-- Per-string selectors injected by tuning.js -->
+          </div>
+        </section>
+
+        <!-- ── Fretboard ── -->
+        <section class="fretboard-section panel-primary" id="fretboard-section">
+          <div id="fretboard-chord-label" class="fb-chord-label" style="display:none"></div>
+          <div id="fretboard-container">
+            <!-- Static fretboard — replaced by fretboard.js when JS runs -->
+            <svg id="fretboard-svg" viewBox="0 0 920 220" xmlns="http://www.w3.org/2000/svg">
+              <!-- Neck background -->
+              <rect class="fb-body" x="60" y="22" width="830" height="166" rx="2"/>
+              <!-- Nut -->
+              <line class="fb-nut" x1="60" y1="24" x2="60" y2="186"/>
+              <!-- Fret lines -->
+              <line class="fb-fret" x1="97.73"  y1="26" x2="97.73"  y2="184"/>
+              <line class="fb-fret" x1="135.45" y1="26" x2="135.45" y2="184"/>
+              <line class="fb-fret" x1="173.18" y1="26" x2="173.18" y2="184"/>
+              <line class="fb-fret" x1="210.91" y1="26" x2="210.91" y2="184"/>
+              <line class="fb-fret" x1="248.64" y1="26" x2="248.64" y2="184"/>
+              <line class="fb-fret" x1="286.36" y1="26" x2="286.36" y2="184"/>
+              <line class="fb-fret" x1="324.09" y1="26" x2="324.09" y2="184"/>
+              <line class="fb-fret" x1="361.82" y1="26" x2="361.82" y2="184"/>
+              <line class="fb-fret" x1="399.55" y1="26" x2="399.55" y2="184"/>
+              <line class="fb-fret" x1="437.27" y1="26" x2="437.27" y2="184"/>
+              <line class="fb-fret" x1="475.00" y1="26" x2="475.00" y2="184"/>
+              <line class="fb-fret" x1="512.73" y1="26" x2="512.73" y2="184"/>
+              <line class="fb-fret" x1="550.45" y1="26" x2="550.45" y2="184"/>
+              <line class="fb-fret" x1="588.18" y1="26" x2="588.18" y2="184"/>
+              <line class="fb-fret" x1="625.91" y1="26" x2="625.91" y2="184"/>
+              <line class="fb-fret" x1="663.64" y1="26" x2="663.64" y2="184"/>
+              <line class="fb-fret" x1="701.36" y1="26" x2="701.36" y2="184"/>
+              <line class="fb-fret" x1="739.09" y1="26" x2="739.09" y2="184"/>
+              <line class="fb-fret" x1="776.82" y1="26" x2="776.82" y2="184"/>
+              <line class="fb-fret" x1="814.55" y1="26" x2="814.55" y2="184"/>
+              <line class="fb-fret" x1="852.27" y1="26" x2="852.27" y2="184"/>
+              <line class="fb-fret" x1="890.00" y1="26" x2="890.00" y2="184"/>
+              <!-- Inlay dots — single -->
+              <circle class="fb-inlay" cx="154.32" cy="105" r="5"/>
+              <circle class="fb-inlay" cx="229.77" cy="105" r="5"/>
+              <circle class="fb-inlay" cx="305.23" cy="105" r="5"/>
+              <circle class="fb-inlay" cx="380.68" cy="105" r="5"/>
+              <circle class="fb-inlay" cx="607.05" cy="105" r="5"/>
+              <circle class="fb-inlay" cx="682.50" cy="105" r="5"/>
+              <circle class="fb-inlay" cx="757.95" cy="105" r="5"/>
+              <circle class="fb-inlay" cx="833.41" cy="105" r="5"/>
+              <!-- Inlay dots — double (12th fret) -->
+              <circle class="fb-inlay" cx="493.86" cy="93"  r="5"/>
+              <circle class="fb-inlay" cx="493.86" cy="117" r="5"/>
+              <!-- String lines (index 5 = high e at top, 0 = low E at bottom) -->
+              <line class="fb-string-5" x1="60" y1="30"  x2="890" y2="30"/>
+              <line class="fb-string-4" x1="60" y1="60"  x2="890" y2="60"/>
+              <line class="fb-string-3" x1="60" y1="90"  x2="890" y2="90"/>
+              <line class="fb-string-2" x1="60" y1="120" x2="890" y2="120"/>
+              <line class="fb-string-1" x1="60" y1="150" x2="890" y2="150"/>
+              <line class="fb-string-0" x1="60" y1="180" x2="890" y2="180"/>
+              <!-- Fret number labels at inlay positions -->
+              <text class="fb-fret-label" x="229.77" y="196">5</text>
+              <text class="fb-fret-label" x="305.23" y="196">7</text>
+              <text class="fb-fret-label" x="380.68" y="196">9</text>
+              <text class="fb-fret-label" x="493.86" y="196">12</text>
+            </svg>
+          </div>
+          <!-- Shape shift controls — hidden until a chord is on the fretboard -->
+          <div class="shape-shift-bar" id="shape-shift-bar" style="display:none">
+            <span class="shape-shift-label">MOVE SHAPE</span>
+            <button class="shape-shift-btn" id="btn-shift-down" title="Move shape toward nut (lower pitch)">↓ Nut</button>
+            <span class="shape-shift-pos" id="shape-shift-pos">Open</span>
+            <button class="shape-shift-btn" id="btn-shift-up" title="Move shape up the neck (higher pitch)">Up Neck ↑</button>
+          </div>
+
+          <div class="fretboard-controls">
+            <div class="tab-input-group">
+              <label for="tab-text-input" class="control-label">Chord / Tab</label>
+              <input id="tab-text-input" type="text" class="tab-input" placeholder="Ab, Dbmaj7, Cm7 or x32010">
+              <button id="btn-parse-tab" class="btn btn-sm">Parse</button>
+            </div>
+            <div class="fretboard-actions">
+              <button id="btn-play-current" class="btn btn-ghost">▶ Play</button>
+              <button id="btn-add-chord" class="btn btn-accent">+ Add to Progression</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── Detected Key ── -->
+        <section class="key-panel panel panel-primary" id="key-panel">
+          <div class="section-label">Detected Key</div>
+          <div id="key-display">
+            <div class="key-placeholder">Select chords on the fretboard…</div>
+          </div>
+        </section>
+
+        <!-- ── Chord Progression ── -->
+        <section class="progression-section panel panel-primary" id="progression-section">
+          <div class="prog-header">
+            <div class="prog-header-left">
+              <div class="section-label">Chord Progression <span class="hint">(click to reload, Ctrl+click to compare)</span></div>
+              <button id="btn-play-progression" class="btn btn-ghost btn-sm prog-play-btn" style="display:none" title="Play active section">▶ Play</button>
+              <select id="form-template-select" class="form-template-select" title="Start from a template">
+                <option value="">Start from Template…</option>
+              </select>
+            </div>
+            <div class="section-tabs" id="section-tabs"></div>
+          </div>
+          <div id="pattern-badge" class="pattern-badge" style="display:none"></div>
+          <div class="chord-chips" id="chord-chips">
+            <span class="chord-chips-empty">No chords yet — select a chord on the fretboard and click <strong>+ Add to Progression</strong>.</span>
+          </div>
+          <div id="progression-story" class="progression-story">
+            <span class="story-placeholder">Add chords to see a live progression analysis…</span>
+          </div>
+        </section>
+
+        <!-- ── Current Chord ── -->
+        <section class="chord-info-panel panel" id="chord-info-panel">
+          <div class="section-label">Current Chord</div>
+          <div id="chord-display">
+            <div class="key-placeholder">Click frets to build a chord…</div>
+          </div>
+          <button id="btn-replace-chord" class="btn btn-replace" style="display:none">⇄ Replace in Progression</button>
+        </section>
+
+      </div><!-- /.dashboard-col-left -->
+
+      <!-- ═══════════════════════════════════════════════
+           RIGHT COLUMN — Analysis & Theory
+           ═══════════════════════════════════════════════ -->
+      <div class="dashboard-col-right">
+
+        <!-- ── Diatonic Chord Suggestions ── -->
+        <section class="suggestions-section panel" id="suggestions-section">
+          <div class="section-label">Diatonic Chords in Key</div>
+          <div class="suggestions-grid" id="suggestions-grid">
+            <div class="key-placeholder">Detect a key to see chord suggestions…</div>
+          </div>
+        </section>
+
+        <!-- ── Voicing Explorer ── -->
+        <div id="voicing-explorer-panel" class="panel" style="display:none"></div>
+
+        <!-- ── Next Chord Ideas ── -->
+        <section class="panel" id="chord-ideas-panel" style="display:none">
+          <div class="section-label">Next Chord Ideas</div>
+          <div id="chord-ideas-grid"></div>
+        </section>
+
+        <!-- ── Scale Suggestions ── -->
+        <div id="scale-suggestions-panel" class="panel" style="display:none"></div>
+
+        <!-- ── Relationship Analyzer ── -->
+        <section class="panel ra-panel panel-analysis" id="relationship-analyzer">
+          <div class="ra-empty">
+            <span class="ra-empty-icon">⇄</span>
+            <span>Add chords to your progression to see relationship analysis.</span>
+            <span class="ra-hint">Ctrl+click multiple chord chips to analyze a specific subset.</span>
+          </div>
+        </section>
+
+        <!-- ── Circle of Fifths ── -->
+        <section class="circle-section panel" id="circle-section">
+          <div class="section-label">Circle of Fifths</div>
+          <div id="circle-of-fifths-container">
+            <!-- SVG rendered by circleOfFifths.js -->
+          </div>
+          <div id="circle-preview-panel" class="circle-preview-panel" style="display:none"></div>
+          <div id="circle-transition-panel" style="display:none"></div>
+          <div id="function-flowchart" style="display:none"></div>
+        </section>
+
+        <!-- ── Scale Degrees & Theory ── -->
+        <section class="theory-section panel panel-analysis" id="theory-section">
+          <div class="section-label">Scale Degrees &amp; Theory</div>
+          <div id="scale-degree-chart">
+            <!-- Table rendered by scaleDegreeChart.js -->
+          </div>
+          <div class="section-label" style="margin-top:1rem">Theory Explanation</div>
+          <div id="theory-text">
+            <!-- Text generated by theoryPanel.js -->
+            <div class="key-placeholder">Chords and key analysis will appear here…</div>
+          </div>
+        </section>
+
+      </div><!-- /.dashboard-col-right -->
+
+    </div><!-- /.dashboard-body -->
+
+  </div><!-- /.dashboard -->
+
+  <!-- Glossary Modal -->
+  <div id="glossary-overlay" class="glossary-overlay" style="display:none" aria-modal="true" role="dialog" aria-label="Theory Glossary">
+    <div class="glossary-modal" id="glossary-modal"></div>
+  </div>
+
+  <script type="module" src="js/app.js?v=12"></script>
+</body>
+</html>

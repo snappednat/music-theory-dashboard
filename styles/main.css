@@ -1,0 +1,600 @@
+/* ─── Design Tokens ─────────────────────────────────── */
+:root {
+  /* Studio Dark palette — cooler, deeper, more electric */
+  --bg-page:        #090910;
+  --bg-panel:       #111120;
+  --bg-panel-alt:   #0e1528;
+  --bg-control:     #08080f;
+  --border:         #1c1c2e;
+  --border-bright:  #3a3a58;
+
+  --text-primary:   #f2f2ff;
+  --text-secondary: #8888b0;
+  --text-hint:      #484865;
+
+  --accent-gold:    #f0a020;
+  --accent-blue:    #3da9fc;
+  --accent-green:   #22c55e;
+  --accent-red:     #f25c54;
+  --accent-purple:  #b57bee;
+  --accent-teal:    #00c4a7;
+
+  /* Fretboard */
+  --fb-wood:        #5c3317;
+  --fb-wood-light:  #7a4525;
+  --fb-fret:        #b8b8c8;
+  --fb-nut:         #e8e0c8;
+  --fb-string:      #d4af37;
+  --fb-inlay:       rgba(255,255,255,0.12);
+
+  /* Note dots */
+  --dot-selected:   #f25c54;
+  --dot-tonic:      #22c55e;
+  --dot-scale:      rgba(61,169,252,0.45);
+  --dot-dominant:   #f0a020;
+  --dot-text:       #ffffff;
+
+  /* Chord function colors */
+  --fn-tonic:       #22c55e;
+  --fn-dominant:    #f25c54;
+  --fn-subdominant: #3da9fc;
+  --fn-other:       #b57bee;
+
+  --radius:         8px;
+  --radius-sm:      4px;
+  --gap:            12px;
+  --font-mono:      'JetBrains Mono', 'Courier New', monospace;
+  --font-display:   'Barlow Semi Condensed', 'IBM Plex Sans', sans-serif;
+}
+
+/* ─── Reset & Base ──────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: radial-gradient(ellipse at 30% 0%, #13132a 0%, #090910 55%);
+  color: var(--text-primary);
+  font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* ─── Grain Texture Overlay (CSS-only, no SVG filter) ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.04;
+  background-image:
+    radial-gradient(circle, rgba(255,255,255,0.55) 1px, transparent 1px),
+    radial-gradient(circle, rgba(255,255,255,0.35) 1px, transparent 1px);
+  background-size: 24px 24px, 13px 13px;
+  background-position: 0 0, 7px 11px;
+}
+
+/* ─── Dashboard Grid ────────────────────────────────── */
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  padding: var(--gap);
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* ─── Two-Column Body Layout ────────────────────────── */
+.dashboard-body {
+  display: grid;
+  grid-template-columns: 640px 1fr;
+  gap: var(--gap);
+  align-items: start;
+}
+
+.dashboard-col-left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  position: sticky;
+  top: 12px;
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  /* subtle scrollbar so it doesn't feel broken */
+  scrollbar-width: thin;
+}
+
+.dashboard-col-right {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  min-width: 0;
+}
+
+@media (max-width: 1150px) {
+  .dashboard-body {
+    grid-template-columns: 1fr;
+  }
+  .dashboard-col-left {
+    position: static;
+    max-height: none;
+    overflow-y: visible;
+  }
+}
+
+/* ─── Header ────────────────────────────────────────── */
+.header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  gap: 12px;
+}
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.header-icon { font-size: 1.6rem; }
+.header-bar h1 {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--accent-gold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.header-actions { display: flex; gap: 8px; }
+
+/* ─── Panels ────────────────────────────────────────── */
+.panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.45);
+}
+
+/* Tier 1: primary instrument panels — elevated depth */
+.panel-primary {
+  box-shadow: 0 2px 14px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04);
+}
+
+/* Tier 3: analysis/reference panels — recessed feel */
+.panel-analysis {
+  background: #0c0c1a;
+  box-shadow: inset 0 1px 4px rgba(0,0,0,0.35);
+}
+
+.section-label {
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #7070a0;
+  margin-bottom: 10px;
+  border-left: 2px solid currentColor;
+  padding-left: 7px;
+}
+.hint {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.72rem;
+  color: var(--text-hint);
+}
+.key-placeholder {
+  color: var(--text-hint);
+  font-style: italic;
+  font-size: 0.85rem;
+}
+
+/* ─── Two-Column Rows (legacy, kept for compatibility) ── */
+.two-col-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--gap);
+}
+@media (max-width: 768px) {
+  .two-col-row { grid-template-columns: 1fr; }
+}
+
+/* ─── Buttons ───────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-control);
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.btn:hover { background: var(--border); border-color: var(--border-bright); }
+
+.btn-sm { padding: 4px 10px; font-size: 0.75rem; }
+
+.btn-accent {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: #fff;
+  font-weight: 600;
+}
+.btn-accent:hover { background: #2a8fd6; border-color: #2a8fd6; }
+
+.btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-secondary);
+}
+.btn-ghost:hover { color: var(--text-primary); border-color: var(--border); }
+
+.btn-danger {
+  background: rgba(231,76,60,0.12);
+  border-color: var(--accent-red);
+  color: var(--accent-red);
+}
+.btn-danger:hover {
+  background: var(--accent-red);
+  color: #fff;
+  border-color: var(--accent-red);
+}
+
+.btn-outline {
+  background: transparent;
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+}
+.btn-outline:hover, .btn-outline[data-active="true"] {
+  background: var(--accent-blue);
+  color: #fff;
+}
+
+.btn-active {
+  background: var(--accent-gold) !important;
+  border-color: var(--accent-gold) !important;
+  color: #1a1a1a !important;
+  font-weight: 700;
+}
+
+/* ─── Scale Type Buttons ────────────────────────────── */
+.scale-type-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.scale-type-btn {
+  padding: 3px 9px;
+  font-size: 0.72rem;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  background: var(--bg-control);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.scale-type-btn:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
+.scale-type-btn.active {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ─── Fretboard Controls ────────────────────────────── */
+/* ── Shape shift bar ── */
+.shape-shift-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 7px 12px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-top: none;
+}
+
+.shape-shift-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  margin-right: 2px;
+}
+
+.shape-shift-btn {
+  background: var(--bg-raised, #1e1e3a);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  border-radius: 6px;
+  padding: 4px 14px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  line-height: 1.6;
+}
+.shape-shift-btn:hover:not(:disabled) {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: #fff;
+}
+.shape-shift-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.shape-shift-pos {
+  min-width: 44px;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+  background: var(--bg-card, #13132a);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 3px 8px;
+}
+
+.fretboard-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 12px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+.tab-input-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.control-label {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.tab-input {
+  background: var(--bg-control);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  padding: 5px 10px;
+  width: 180px;
+}
+.tab-input:focus { outline: none; border-color: var(--accent-blue); }
+
+.fretboard-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.scale-toggle-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* ─── Chord Progression Chips ───────────────────────── */
+.progression-section { padding: 10px 16px; }
+.chord-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  min-height: 36px;
+}
+.chord-chips-empty { color: var(--text-hint); font-style: italic; font-size: 0.82rem; }
+
+/* ─── Pattern Badge ─────────────────────────────────── */
+.pattern-badge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  margin-bottom: 6px;
+  background: rgba(155, 89, 182, 0.08);
+  border: 1px solid rgba(155, 89, 182, 0.25);
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+.pattern-badge-icon { font-size: 0.9rem; }
+.pattern-badge-name {
+  font-weight: 700;
+  color: var(--accent-purple);
+}
+.pattern-badge-genre {
+  font-size: 0.65rem;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(155, 89, 182, 0.15);
+  color: var(--accent-purple);
+  font-weight: 600;
+}
+.pattern-badge-examples {
+  color: var(--text-secondary);
+  font-style: italic;
+}
+.pattern-badge-desc {
+  color: var(--text-hint);
+  flex-basis: 100%;
+  font-size: 0.7rem;
+}
+
+.chord-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: var(--bg-control);
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  font-size: 0.82rem;
+  cursor: grab;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, opacity 0.15s, box-shadow 0.1s;
+  font-weight: 600;
+  user-select: none;
+}
+.chord-chip:active { cursor: grabbing; }
+.chord-chip:hover { border-color: var(--accent-gold); color: var(--accent-gold); }
+.chord-chip.active {
+  background: var(--accent-gold);
+  border-color: var(--accent-gold);
+  color: #1a1a1a;
+}
+.chord-chip .chip-remove {
+  font-size: 0.7rem;
+  opacity: 0.5;
+  cursor: pointer;
+  margin-left: 2px;
+}
+.chord-chip .chip-remove:hover { opacity: 1; color: var(--accent-red); }
+
+.chip-chord-name {
+  display: block;
+  line-height: 1.15;
+  font-weight: 600;
+}
+.chip-numeral {
+  display: block;
+  font-size: 0.68em;
+  font-weight: 400;
+  opacity: 0.6;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
+/* Drag-to-reorder states */
+.chord-chip.chip-dragging {
+  opacity: 0.3;
+  box-shadow: none !important;
+}
+/* Drop-target indicators — left/right edge highlight */
+.chord-chip.chip-drop-before {
+  box-shadow: -3px 0 0 0 var(--accent-teal);
+}
+.chord-chip.chip-drop-after {
+  box-shadow: 3px 0 0 0 var(--accent-teal);
+}
+/* Drag handle icon — visible on hover */
+.chip-drag-handle {
+  font-size: 0.75rem;
+  opacity: 0;
+  color: var(--text-hint);
+  transition: opacity 0.15s;
+  pointer-events: none;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.chord-chip:hover .chip-drag-handle { opacity: 0.55; }
+
+/* ─── Scale Status Label ────────────────────────────── */
+.scale-status-label {
+  font-size: 0.72rem;
+  color: var(--accent-teal);
+  font-weight: 600;
+  white-space: nowrap;
+  display: none;
+  align-items: center;
+  gap: 4px;
+}
+.scale-status-label.visible { display: inline-flex; }
+.scale-status-label::before { content: '↳'; opacity: 0.7; margin-right: 2px; }
+
+/* ─── Form Template Select ─────────────────────────── */
+.form-template-select {
+  font-size: 0.72rem;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-control);
+  color: var(--text-secondary);
+  cursor: pointer;
+  margin-left: auto;
+}
+.form-template-select:hover {
+  border-color: var(--accent-teal);
+  color: var(--accent-teal);
+}
+
+/* ─── Primary Action Button (Add to Progression) ───── */
+#btn-add-chord {
+  padding: 8px 20px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  box-shadow: 0 0 0 1px rgba(61,169,252,0.45), 0 2px 8px rgba(61,169,252,0.18);
+}
+#btn-add-chord:hover {
+  box-shadow: 0 0 0 3px rgba(61,169,252,0.28), 0 4px 14px rgba(61,169,252,0.22);
+}
+
+/* ─── Panel Reveal Animation ────────────────────────── */
+@keyframes panelReveal {
+  from { opacity: 0; transform: translateY(-8px); filter: blur(2px); }
+  to   { opacity: 1; transform: translateY(0);    filter: blur(0);   }
+}
+.panel-reveal {
+  animation: panelReveal 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ─── Add-to-Progression Button Pulse ───────────────── */
+@keyframes btnSuccess {
+  0%   { box-shadow: 0 0 0 0   rgba(61,169,252,0.7), 0 2px 8px rgba(61,169,252,0.18); }
+  70%  { box-shadow: 0 0 0 10px rgba(61,169,252,0),   0 2px 8px rgba(61,169,252,0.18); }
+  100% { box-shadow: 0 0 0 0   rgba(61,169,252,0),   0 2px 8px rgba(61,169,252,0.18); }
+}
+.btn-pulse { animation: btnSuccess 0.5s ease-out; }
+
+/* ─── Key Panel Glow on Key Change ──────────────────── */
+@keyframes keyPanelGlow {
+  0%   { box-shadow: 0 -3px 24px rgba(240,160,32,0),   0 2px 14px rgba(0,0,0,0.55); }
+  35%  { box-shadow: 0 -3px 24px rgba(240,160,32,0.55), 0 2px 14px rgba(0,0,0,0.55); }
+  100% { box-shadow: 0 -3px 24px rgba(240,160,32,0),   0 2px 14px rgba(0,0,0,0.55); }
+}
+.key-panel.key-glow {
+  animation: keyPanelGlow 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ─── Drag-reorder: gap indicator ───────────────────── */
+.chord-chip.chip-drop-before {
+  box-shadow: -3px 0 0 0 var(--accent-teal);
+  margin-left: 10px;
+}
+.chord-chip.chip-drop-after {
+  box-shadow: 3px 0 0 0 var(--accent-teal);
+  margin-right: 10px;
+}
+
+/* ─── Header separator before destructive buttons ───── */
+.header-actions-sep {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+  margin: 0 2px;
+  flex-shrink: 0;
+}
+
+/* ─── Scrollbar ─────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-page); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-bright); }

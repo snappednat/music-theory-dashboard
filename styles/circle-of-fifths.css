@@ -1,0 +1,131 @@
+/* ─── Circle of Fifths Container ───────────────────── */
+.circle-section {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+#circle-of-fifths-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex: 1;
+}
+
+#circle-svg {
+  width: 100%;
+  max-width: 340px;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+/* ─── Segment Styles ────────────────────────────────── */
+.cof-segment-outer {
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.cof-segment-outer:hover { opacity: 0.85; }
+
+.cof-segment-inner {
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.cof-segment-inner:hover { opacity: 0.85; }
+
+/* Active (detected key) */
+.cof-active-outer { stroke: var(--accent-gold) !important; stroke-width: 2.5 !important; }
+.cof-active-inner { stroke: var(--accent-gold) !important; stroke-width: 2 !important; }
+
+/* Adjacent keys (IV and V neighbors) */
+.cof-adjacent-outer { opacity: 0.9; }
+
+/* ─── Text Labels (arc-following via textPath) ──────── */
+.cof-label-outer {
+  fill: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  text-anchor: middle;   /* centres text at startOffset="50%" on the arc */
+  font-family: system-ui, sans-serif;
+  pointer-events: none;
+}
+.cof-label-inner {
+  fill: rgba(255,255,255,0.85);
+  font-size: 9px;
+  font-weight: 600;
+  text-anchor: middle;
+  font-family: system-ui, sans-serif;
+  pointer-events: none;
+}
+
+/* Active label highlight */
+.cof-label-active { fill: #1a1a1a; }
+
+/* ─── Function Flowchart ───────────────────────────── */
+#function-flowchart {
+  padding: 8px 12px 10px;
+  border-top: 1px solid var(--border, #2d2d4e);
+}
+
+.fn-flow-svg {
+  width: 100%;
+  max-width: 340px;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+.fn-trace {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px;
+  margin-top: 6px;
+  padding: 4px 0;
+}
+.fn-trace-label {
+  font-size: 0.68rem;
+  color: var(--text-hint, #5a5a7a);
+  margin-right: 4px;
+  font-weight: 600;
+}
+.fn-trace-badge {
+  display: inline-block;
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid;
+  letter-spacing: 0.03em;
+}
+.fn-trace-chromatic {
+  background: #4a4a6a22;
+  color: #7a7a9a;
+  border-color: #5a5a7a44;
+}
+.fn-trace-arrow {
+  font-size: 0.6rem;
+  color: var(--text-hint, #5a5a7a);
+  opacity: 0.5;
+}
+
+/* ─── Roman Numeral Labels (inside segments) ──────── */
+.cof-numeral-label {
+  font-size: 9px;
+  font-weight: 700;
+  font-family: system-ui, sans-serif;
+  fill: rgba(255,255,255,0.5);
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+}
+.cof-numeral-label.cof-numeral-active {
+  fill: rgba(255,255,255,0.95);
+}
+
+/* ─── Root Motion Arcs ────────────────────────────── */
+.cof-motion-arc {
+  opacity: 0.8;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}

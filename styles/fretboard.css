@@ -1,0 +1,169 @@
+/* ─── Fretboard Container ───────────────────────────── */
+.fretboard-section {
+  width: 100%;
+}
+
+/* ─── Live Chord Name Label ─────────────────────────── */
+.fb-chord-label {
+  text-align: center;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--accent-blue);
+  letter-spacing: 0.02em;
+  padding: 6px 0 2px;
+  line-height: 1;
+}
+
+#fretboard-container {
+  width: 100%;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  overflow-x: auto;
+  padding: 8px 0 4px;
+}
+
+#fretboard-svg {
+  display: block;
+  width: 100%;
+  min-width: 600px;
+  height: auto;
+  cursor: crosshair;
+}
+
+/* ─── SVG Fretboard Elements ────────────────────────── */
+
+/* Wood body background */
+.fb-body {
+  fill: var(--fb-wood);
+}
+
+/* Fret lines */
+.fb-fret {
+  stroke: var(--fb-fret);
+  stroke-width: 1.5;
+}
+
+/* The nut (thicker first fret marker) */
+.fb-nut {
+  stroke: var(--fb-nut);
+  stroke-width: 4;
+}
+
+/* String lines */
+.fb-string-0 { stroke: var(--fb-string); stroke-width: 2.8; }  /* low E - thickest */
+.fb-string-1 { stroke: var(--fb-string); stroke-width: 2.4; }
+.fb-string-2 { stroke: var(--fb-string); stroke-width: 2.0; }
+.fb-string-3 { stroke: var(--fb-string); stroke-width: 1.6; }
+.fb-string-4 { stroke: var(--fb-string); stroke-width: 1.2; }
+.fb-string-5 { stroke: var(--fb-string); stroke-width: 0.9; }   /* high e - thinnest */
+
+/* Scale position dim overlay (covers neck outside active box) */
+.fb-pos-dim {
+  fill: rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
+/* Fret position inlay markers */
+.fb-inlay {
+  fill: var(--fb-inlay);
+  pointer-events: none;
+}
+
+/* String root note labels (left of nut) */
+.fb-string-label {
+  fill: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  font-family: system-ui, sans-serif;
+  pointer-events: none;
+}
+
+/* Fret number labels (below fretboard) */
+.fb-fret-label {
+  fill: var(--text-hint);
+  font-size: 10px;
+  text-anchor: middle;
+  font-family: system-ui, sans-serif;
+  pointer-events: none;
+}
+
+/* Invisible hit areas */
+.fb-hit {
+  fill: transparent;
+  cursor: pointer;
+}
+.fb-hit:hover ~ .fb-hover-ring,
+.fb-hit:hover + .fb-hover-ring {
+  opacity: 1;
+}
+
+/* Hover preview ring (shown on hover via JS) */
+.fb-hover-ring {
+  fill: none;
+  stroke: rgba(255,255,255,0.55);
+  stroke-width: 2;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.1s;
+}
+
+/* ─── Note Dots ─────────────────────────────────────── */
+.note-dot {
+  pointer-events: none;
+  transition: r 0.1s;
+}
+.note-dot-selected {
+  fill: var(--dot-selected);
+}
+.note-dot-tonic {
+  fill: var(--dot-tonic);
+}
+.note-dot-dominant {
+  fill: var(--dot-dominant);
+}
+.note-dot-scale {
+  fill: var(--dot-scale);
+}
+.note-dot-suggestion {
+  fill: rgba(155, 89, 182, 0.5);
+  stroke: #9b59b6;
+  stroke-width: 1.5;
+}
+
+/* Note text labels inside dots */
+.note-label {
+  fill: var(--dot-text);
+  font-size: 10px;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  font-family: system-ui, sans-serif;
+  pointer-events: none;
+}
+.note-label-scale {
+  fill: rgba(255,255,255,0.8);
+  font-size: 9px;
+}
+
+/* Mute 'X' markers above strings */
+.fb-mute {
+  fill: var(--text-hint);
+  font-size: 13px;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  font-family: system-ui, sans-serif;
+  pointer-events: none;
+}
+
+/* Open string 'O' markers — hollow ring on the string, left of the nut */
+.fb-open {
+  fill: none;
+  stroke: var(--text-secondary);
+  stroke-width: 2;
+  pointer-events: none;
+}
