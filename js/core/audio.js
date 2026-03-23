@@ -40,8 +40,11 @@ function _getCtx() {
  * Shifts the standard open-string MIDI by the pitch class difference, then adds fret offset.
  */
 function _midiForString(stringIdx, fret, tuning) {
-  const pcDiff = ((tuning[stringIdx] - STD_TUNING[stringIdx]) % 12 + 12) % 12;
-  return STD_OPEN_MIDI[stringIdx] + pcDiff + fret;
+  // Signed semitone shift from standard, clamped to nearest ±6 range.
+  // Using plain modulo produces +10 for a -2 shift (wraps the wrong way).
+  let diff = tuning[stringIdx] - STD_TUNING[stringIdx];
+  diff = ((diff + 6) % 12 + 12) % 12 - 6;
+  return STD_OPEN_MIDI[stringIdx] + diff + fret;
 }
 
 /**
