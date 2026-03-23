@@ -792,6 +792,14 @@
   padding: 3px 0 5px;
   text-align: center;
 }
+.ve-no-voicing {
+  font-size: 0.72rem;
+  color: #64748b;
+  padding: 14px 12px;
+  text-align: center;
+  line-height: 1.55;
+}
+.ve-no-voicing strong { color: #94a3b8; }
 
 /* ─── Cadence Badges (progression chips) ─────────────── */
 .cadence-badge {

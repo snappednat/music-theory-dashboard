@@ -208,9 +208,11 @@ function _mechanicsDifficulty(frets, isBarre) {
   const span        = frettedOnly.length > 1
     ? Math.max(...frettedOnly) - Math.min(...frettedOnly) : 0;
   const hasOpen     = frets.some(f => f === 0);
-  // Beginner: open string(s), no barre, ≤3 fretted fingers, span ≤2
-  if (hasOpen && !isBarre && fingers <= 3 && span <= 2) return 'beginner';
-  // Intermediate: barre OR closed ≤4 fingers with span ≤3
+  // Beginner: open-position chord (≥1 open string), ≤3 effective fingers, span ≤2.
+  // Partial barres on open chords (e.g. A major x02220) are still beginner-accessible,
+  // so we don't disqualify based on isBarre when open strings are present.
+  if (hasOpen && fingers <= 3 && span <= 2) return 'beginner';
+  // Intermediate: full barre chord or closed position ≤4 fingers with span ≤3
   if (isBarre || (fingers <= 4 && span <= 3)) return 'intermediate';
   return 'advanced';
 }

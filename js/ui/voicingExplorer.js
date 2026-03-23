@@ -43,13 +43,20 @@ export function renderVoicingExplorer(chord, tuning, onSelect, currentFrets = nu
   const _DIFF_RANK = { beginner: 0, intermediate: 1, advanced: 2 };
   const maxRank = _DIFF_RANK[difficultyFilter] ?? 2;
   let voicings = allVoicings.filter(v => (_DIFF_RANK[v.difficulty ?? 'advanced']) <= maxRank);
-  let _fallback = false;
+
+  // If no voicings match the selected level, show an informative empty state —
+  // never fall back to a harder voicing, as that defeats the purpose of the filter.
   if (voicings.length === 0) {
-    // Show the easiest available voicing with a note
-    voicings = [[...allVoicings].sort(
-      (a, b) => (_DIFF_RANK[a.difficulty ?? 'advanced']) - (_DIFF_RANK[b.difficulty ?? 'advanced'])
-    )[0]];
-    _fallback = true;
+    const levelLabels = { beginner: 'Beginner', intermediate: 'Intermediate', advanced: 'Advanced' };
+    const nextLevel   = difficultyFilter === 'beginner' ? 'Intermediate' : 'Advanced';
+    container.style.display = '';
+    container.innerHTML = `
+      <div class="section-label">Voicings — ${chord.name}</div>
+      <div class="ve-no-voicing">
+        No open-position ${levelLabels[difficultyFilter] ?? difficultyFilter} shape available for <strong>${chord.name}</strong>.
+        Switch to <strong>${nextLevel}</strong> to see barre chord shapes.
+      </div>`;
+    return;
   }
 
   const wasHidden = container.style.display === 'none' || !container.style.display;
@@ -95,9 +102,7 @@ export function renderVoicingExplorer(chord, tuning, onSelect, currentFrets = nu
     return `<span class="ve-tuning-badge">${label}</span>`;
   })();
 
-  const fallbackNote = _fallback
-    ? `<div class="ve-fallback-note">No ${difficultyFilter} voicing available — showing simplest found</div>`
-    : '';
+  const fallbackNote = '';
 
   container.innerHTML = `
     <div class="section-label">Voicings — ${chord.name}${tuningBadge}</div>
