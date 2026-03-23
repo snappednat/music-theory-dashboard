@@ -96,6 +96,7 @@ export const CHORD_FORMULAS = {
   dom9no5:    [0, 4, 10, 2],           // 9(no5)
   maj9no5:    [0, 4, 11, 2],           // maj9(no5)
   min9no5:    [0, 3, 10, 2],           // m9(no5)
+  min11no5:   [0, 3, 10, 5],           // m11(no5) — minor 7th shell + 11th (common guitar voicing)
   quartal:    [0, 5, 10],              // quartal triad (stacked perfect 4ths)
   quartal7:   [0, 5, 10, 3],           // quartal 7th (four stacked 4ths)
   quintal:    [0, 7, 2],               // quintal triad (stacked perfect 5ths)
@@ -135,7 +136,8 @@ export const CHORD_SUFFIXES = {
   minmaj11: 'mMaj11', minmaj13: 'mMaj13',
   dom7no5: '7(no5)', maj7no5: 'maj7(no5)', min7no5: 'm7(no5)',
   dom9no5: '9(no5)', maj9no5: 'maj9(no5)', min9no5: 'm9(no5)',
-  quartal: 'qrtl', quartal7: 'qrtl7', quintal: 'qntl',
+  min11no5: 'm11(no5)',
+  quartal: '(4ths)', quartal7: '(4ths7)', quintal: '(5ths)',
 };
 
 // Human-readable quality labels
@@ -172,6 +174,7 @@ export const CHORD_QUALITY_LABELS = {
   minmaj11: 'Minor/Major 11th', minmaj13: 'Minor/Major 13th',
   dom7no5: 'Dominant 7 (no5)', maj7no5: 'Major 7 (no5)', min7no5: 'Minor 7 (no5)',
   dom9no5: 'Dominant 9 (no5)', maj9no5: 'Major 9 (no5)', min9no5: 'Minor 9 (no5)',
+  min11no5: 'Minor 11th (no5)',
   quartal: 'Quartal', quartal7: 'Quartal 7th', quintal: 'Quintal',
 };
 
