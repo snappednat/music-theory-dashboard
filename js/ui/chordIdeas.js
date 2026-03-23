@@ -413,12 +413,6 @@ function _fitLabel(fit) {
 
 const _IDEA_DIFF_RANK = { beginner: 0, intermediate: 1, advanced: 2 };
 
-function _filterByDifficulty(voicings) {
-  const maxRank = _IDEA_DIFF_RANK[_savedDifficultyFilter] ?? 2;
-  const filtered = voicings.filter(v => (_IDEA_DIFF_RANK[v.difficulty ?? 'advanced']) <= maxRank);
-  return filtered.length > 0 ? filtered : voicings; // graceful: return all if none match
-}
-
 function _buildExpansion(idea) {
   const allVoicings = generateVoicings(idea.root, idea.quality, _savedTuning);
 
