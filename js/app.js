@@ -973,6 +973,7 @@ function _renderAll() {
     _onChordHover,
     _onChordPreviewLock,
     ideasContext,
+    AppState.difficultyFilter,
   );
 
   // Chord progression chips (sectioned)

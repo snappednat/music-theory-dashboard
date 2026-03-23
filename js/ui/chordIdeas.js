@@ -34,6 +34,7 @@ let _savedActiveKey        = null;
 let _savedProgression      = null;
 let _savedLastChord        = null;   // current fretboard chord — context for transition sorting
 let _savedTuning           = null;
+let _savedDifficultyFilter = 'advanced'; // 'beginner' | 'intermediate' | 'advanced'
 let _savedOnVoicingPreview = null;
 let _savedOnAdd            = null;
 let _savedOnHover          = null;  // (chord|null) => void — circle preview on hover
@@ -51,12 +52,14 @@ let _savedOnLock           = null;  // (chord|null) => void — lock preview on 
  * @param {function}    [onHover]          - (chord|null) → void   hover preview on circle
  * @param {function}    [onLock]           - (chord|null) → void   lock preview on expand/collapse
  * @param {object|null} [lastChord]        - current fretboard chord used to context-sort suggestions
+ * @param {string}      [difficultyFilter] - 'beginner' | 'intermediate' | 'advanced'
  */
-export function renderChordIdeas(activeKey, progression, tuning, onVoicingPreview, onAddToProgression, onHover = null, onLock = null, lastChord = null) {
+export function renderChordIdeas(activeKey, progression, tuning, onVoicingPreview, onAddToProgression, onHover = null, onLock = null, lastChord = null, difficultyFilter = 'advanced') {
   _savedActiveKey        = activeKey;
   _savedProgression      = progression;
   _savedLastChord        = lastChord;
   _savedTuning           = tuning;
+  _savedDifficultyFilter = difficultyFilter;
   _savedOnVoicingPreview = onVoicingPreview;
   _savedOnAdd            = onAddToProgression;
   _savedOnHover          = onHover;
@@ -356,8 +359,11 @@ function _handleGridClick(e) {
     const quality = addBtn.dataset.quality;
     const idea = _ideas.find(i => i.root === root && i.quality === quality)
               ?? { root, quality, name: addBtn.dataset.name ?? '' };
-    const voicings = generateVoicings(root, quality, _savedTuning);
-    const frets    = voicings[_expandedVoicingIdx]?.frets ?? voicings[0]?.frets;
+    const allV   = generateVoicings(root, quality, _savedTuning);
+    const maxRnk = _IDEA_DIFF_RANK[_savedDifficultyFilter] ?? 2;
+    const filtV  = allV.filter(v => (_IDEA_DIFF_RANK[v.difficulty ?? 'advanced']) <= maxRnk);
+    const pool   = filtV.length > 0 ? filtV : allV;
+    const frets  = pool[_expandedVoicingIdx]?.frets ?? pool[0]?.frets;
     _expandedCardKey    = null;
     _expandedVoicingIdx = 0;
     _savedOnLock?.(null);
@@ -405,11 +411,33 @@ function _fitLabel(fit) {
 
 // ─── Inline expansion HTML ────────────────────────────────────────────────────
 
-function _buildExpansion(idea) {
-  const voicings = generateVoicings(idea.root, idea.quality, _savedTuning);
+const _IDEA_DIFF_RANK = { beginner: 0, intermediate: 1, advanced: 2 };
 
-  if (!voicings || voicings.length === 0) {
+function _filterByDifficulty(voicings) {
+  const maxRank = _IDEA_DIFF_RANK[_savedDifficultyFilter] ?? 2;
+  const filtered = voicings.filter(v => (_IDEA_DIFF_RANK[v.difficulty ?? 'advanced']) <= maxRank);
+  return filtered.length > 0 ? filtered : voicings; // graceful: return all if none match
+}
+
+function _buildExpansion(idea) {
+  const allVoicings = generateVoicings(idea.root, idea.quality, _savedTuning);
+
+  if (!allVoicings || allVoicings.length === 0) {
     return `<div class="idea-expansion"><p class="idea-no-voicings">No voicings available</p></div>`;
+  }
+
+  const maxRank  = _IDEA_DIFF_RANK[_savedDifficultyFilter] ?? 2;
+  const filtered = allVoicings.filter(v => (_IDEA_DIFF_RANK[v.difficulty ?? 'advanced']) <= maxRank);
+  const voicings = filtered.length > 0 ? filtered : null;
+
+  // If no voicings match the difficulty level, show an informative message
+  if (!voicings) {
+    const levelLabel = _savedDifficultyFilter.charAt(0).toUpperCase() + _savedDifficultyFilter.slice(1);
+    const nextLevel  = _savedDifficultyFilter === 'beginner' ? 'Intermediate' : 'Advanced';
+    return `
+      <div class="idea-expansion">
+        <p class="idea-no-voicings">No ${levelLabel} shape available — switch to ${nextLevel} to see voicings.</p>
+      </div>`;
   }
 
   const cards = voicings.slice(0, 6).map((v, i) => {
