@@ -208,10 +208,10 @@ function _mechanicsDifficulty(frets, isBarre) {
   const span        = frettedOnly.length > 1
     ? Math.max(...frettedOnly) - Math.min(...frettedOnly) : 0;
   const hasOpen     = frets.some(f => f === 0);
-  // Beginner: open-position chord (≥1 open string), ≤3 effective fingers, span ≤2.
-  // Partial barres on open chords (e.g. A major x02220) are still beginner-accessible,
-  // so we don't disqualify based on isBarre when open strings are present.
-  if (hasOpen && fingers <= 3 && span <= 2) return 'beginner';
+  // Beginner: open-position chord (≥1 open string), ≤4 effective fingers, span ≤2.
+  // 4-finger open chords like C7 (x32310) are standard beginner guitar chords.
+  // Partial barres on open chords (e.g. A major x02220) are still beginner-accessible.
+  if (hasOpen && fingers <= 4 && span <= 2) return 'beginner';
   // Intermediate: full barre chord or closed position ≤4 fingers with span ≤3
   if (isBarre || (fingers <= 4 && span <= 3)) return 'intermediate';
   return 'advanced';
@@ -219,12 +219,20 @@ function _mechanicsDifficulty(frets, isBarre) {
 
 /**
  * Return the difficulty rating for a voicing.
- * Final difficulty = max(chord-quality difficulty, finger-mechanics difficulty).
+ * For open-position shapes, mechanics alone determine difficulty — a G7 or Am7
+ * in open position is a beginner chord regardless of quality name.
+ * For closed-position shapes, quality provides a floor (dom7b9 stays advanced).
  * @export so voicingExplorer can reference it if needed.
  */
 export function voicingDifficulty(frets, quality, isBarre = false) {
-  const qualRank = _DIFF_RANK[QUALITY_DIFFICULTY[quality] ?? 'advanced'];
   const mechRank = _DIFF_RANK[_mechanicsDifficulty(frets, isBarre)];
+  const hasOpen  = frets.some(f => f === 0);
+
+  // Open-position voicings: shape difficulty = mechanics only.
+  if (hasOpen) return ['beginner', 'intermediate', 'advanced'][mechRank];
+
+  // Closed-position shapes: quality rank provides a floor.
+  const qualRank = _DIFF_RANK[QUALITY_DIFFICULTY[quality] ?? 'advanced'];
   return ['beginner', 'intermediate', 'advanced'][Math.max(qualRank, mechRank)];
 }
 
@@ -434,6 +442,10 @@ export const COMMON_VOICINGS = {
   'E-dom7':  [0, 2, 0, 1, 0, 0],
   'D-dom7':  [-1, -1, 0, 2, 1, 2],
   'B-dom7':  [-1, 2, 1, 2, 0, 2],
+  // Open 7th chords universally taught to beginners
+  'E-min7':  [0, 2, 0, 0, 0, 0],   // Em7: 1 finger (just A string fret 2)
+  'A-min7':  [-1, 0, 2, 0, 1, 0],  // Am7: 2 fingers
+  'D-min7':  [-1, -1, 0, 2, 1, 1], // Dm7: 3 fingers, span 1
 };
 
 export function getCommonVoicing(rootPitch, quality) {
