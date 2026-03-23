@@ -637,12 +637,12 @@ function _shiftChordShape(delta) {
     // Shift down: only allowed when the lowest fretted (non-open) string > 0
     const minFretted = Math.min(...frets.filter(f => f > 0));
     if (!isFinite(minFretted) || minFretted <= 1) return; // already at nut
-    AppState.selectedFrets = frets.map(f => f === -1 ? -1 : f + delta);
+    AppState.selectedFrets = frets.map(f => (f === -1 || f === 0) ? f : f + delta);
   } else {
-    // Shift up: clamp so no string exceeds fret 22
-    const maxFret = Math.max(...active);
+    // Shift up: clamp so no string exceeds fret 22; open strings stay open
+    const maxFret = Math.max(...frets.filter(f => f > 0), 0);
     if (maxFret + delta > 22) return;
-    AppState.selectedFrets = frets.map(f => f === -1 ? -1 : f + delta);
+    AppState.selectedFrets = frets.map(f => (f === -1 || f === 0) ? f : f + delta);
   }
 
   _analyzeAndRender();
