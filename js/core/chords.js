@@ -178,6 +178,54 @@ export const CHORD_QUALITY_LABELS = {
   quartal: 'Quartal', quartal7: 'Quartal 7th', quintal: 'Quintal',
 };
 
+// ─── Difficulty classification ────────────────────────────────────────────────
+
+const _DIFF_RANK = { beginner: 0, intermediate: 1, advanced: 2 };
+
+/** Map chord quality → minimum difficulty level for that sound. */
+export const QUALITY_DIFFICULTY = {
+  // Beginner — simple, commonly taught first
+  maj:'beginner', min:'beginner', sus2:'beginner', sus4:'beginner',
+  add9:'beginner', pow5:'beginner', minadd9:'beginner',
+  // Intermediate — 7ths, 6ths, 9ths, basic extensions
+  dom7:'intermediate', maj7:'intermediate', min7:'intermediate',
+  dim:'intermediate',  dim7:'intermediate', hdim7:'intermediate', aug:'intermediate',
+  maj6:'intermediate', min6:'intermediate', dom9:'intermediate',
+  maj9:'intermediate', min9:'intermediate', minmaj7:'intermediate',
+  maj6add9:'intermediate', augmaj7:'intermediate', dom7sus4:'intermediate',
+  dom7sus2:'intermediate', maj7sus2:'intermediate', maj7sus4:'intermediate',
+  add4:'intermediate', minadd4:'intermediate', sus2sus4:'intermediate',
+  maj11:'intermediate', min11:'intermediate', dom11:'intermediate',
+  min13:'intermediate', maj13:'intermediate', dom13:'intermediate',
+  majb5:'intermediate', dom13sus4:'intermediate', minmaj9:'intermediate',
+  // Everything not listed → defaults to 'advanced'
+};
+
+/** Classify a voicing shape by mechanical difficulty (finger count, span, barre). */
+function _mechanicsDifficulty(frets, isBarre) {
+  const frettedOnly = frets.filter(f => f > 0);
+  const fingers     = countFingers(frets);
+  const span        = frettedOnly.length > 1
+    ? Math.max(...frettedOnly) - Math.min(...frettedOnly) : 0;
+  const hasOpen     = frets.some(f => f === 0);
+  // Beginner: open string(s), no barre, ≤3 fretted fingers, span ≤2
+  if (hasOpen && !isBarre && fingers <= 3 && span <= 2) return 'beginner';
+  // Intermediate: barre OR closed ≤4 fingers with span ≤3
+  if (isBarre || (fingers <= 4 && span <= 3)) return 'intermediate';
+  return 'advanced';
+}
+
+/**
+ * Return the difficulty rating for a voicing.
+ * Final difficulty = max(chord-quality difficulty, finger-mechanics difficulty).
+ * @export so voicingExplorer can reference it if needed.
+ */
+export function voicingDifficulty(frets, quality, isBarre = false) {
+  const qualRank = _DIFF_RANK[QUALITY_DIFFICULTY[quality] ?? 'advanced'];
+  const mechRank = _DIFF_RANK[_mechanicsDifficulty(frets, isBarre)];
+  return ['beginner', 'intermediate', 'advanced'][Math.max(qualRank, mechRank)];
+}
+
 // ─── Chord Name Parser ────────────────────────────────────────────────────────
 
 // Root-note spellings ordered longest-first so regex matches greedily
@@ -586,7 +634,7 @@ export function generateVoicings(rootPitch, quality, tuning) {
       .map(v => ({ ...v, label: v.label + ' (no 5)' })));
   }
 
-  // Deduplicate, sort open-string-rich voicings first, then limit
+  // Deduplicate, sort open-string-rich voicings first, annotate difficulty, then limit
   const seen = new Set();
   return voicings.filter(v => {
     const key = v.frets.join(',');
@@ -597,7 +645,10 @@ export function generateVoicings(rootPitch, quality, tuning) {
     const openA = a.frets.filter(f => f === 0).length;
     const openB = b.frets.filter(f => f === 0).length;
     return openB - openA;
-  }).slice(0, 8);
+  }).map(v => ({
+    ...v,
+    difficulty: voicingDifficulty(v.frets, quality, v.isBarre ?? false),
+  })).slice(0, 8);
 }
 
 /**

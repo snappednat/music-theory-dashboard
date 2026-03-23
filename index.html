@@ -167,13 +167,6 @@
           <button id="btn-replace-chord" class="btn btn-replace" style="display:none">⇄ Replace in Progression</button>
         </section>
 
-      </div><!-- /.dashboard-col-left -->
-
-      <!-- ═══════════════════════════════════════════════
-           RIGHT COLUMN — Analysis & Theory
-           ═══════════════════════════════════════════════ -->
-      <div class="dashboard-col-right">
-
         <!-- ── Diatonic Chord Suggestions ── -->
         <section class="suggestions-section panel" id="suggestions-section">
           <div class="section-label">Diatonic Chords in Key</div>
@@ -181,6 +174,23 @@
             <div class="key-placeholder">Detect a key to see chord suggestions…</div>
           </div>
         </section>
+
+      </div><!-- /.dashboard-col-left -->
+
+      <!-- ═══════════════════════════════════════════════
+           RIGHT COLUMN — Analysis & Theory
+           ═══════════════════════════════════════════════ -->
+      <div class="dashboard-col-right">
+
+        <!-- ── Player Level Filter ── -->
+        <div id="difficulty-bar" class="difficulty-bar">
+          <span class="difficulty-bar-label">Player Level</span>
+          <div class="difficulty-toggle-group">
+            <button class="difficulty-btn" data-level="beginner">Beginner</button>
+            <button class="difficulty-btn" data-level="intermediate">Intermediate</button>
+            <button class="difficulty-btn active" data-level="advanced">Advanced</button>
+          </div>
+        </div>
 
         <!-- ── Voicing Explorer ── -->
         <div id="voicing-explorer-panel" class="panel" style="display:none"></div>

@@ -748,6 +748,51 @@
 .theory-insight-info    { color: #94a3b8; }
 .theory-insight-icon    { flex-shrink: 0; opacity: 0.8; margin-top: 1px; }
 
+/* ─── Player Level / Difficulty Bar ───────────────────── */
+.difficulty-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  background: rgba(255,255,255,0.03);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  margin-bottom: 6px;
+}
+.difficulty-bar-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #64748b;
+  white-space: nowrap;
+}
+.difficulty-toggle-group {
+  display: flex;
+  gap: 4px;
+}
+.difficulty-btn {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.difficulty-btn:hover { border-color: #94a3b8; color: #94a3b8; }
+.difficulty-btn.active[data-level="beginner"]     { background: #22c55e22; border-color: #22c55e; color: #4ade80; }
+.difficulty-btn.active[data-level="intermediate"] { background: #f59e0b22; border-color: #f59e0b; color: #fbbf24; }
+.difficulty-btn.active[data-level="advanced"]     { background: #6366f122; border-color: #6366f1; color: #a5b4fc; }
+.ve-fallback-note {
+  font-size: 0.68rem;
+  color: #94a3b8;
+  font-style: italic;
+  padding: 3px 0 5px;
+  text-align: center;
+}
+
 /* ─── Cadence Badges (progression chips) ─────────────── */
 .cadence-badge {
   display: inline-flex;

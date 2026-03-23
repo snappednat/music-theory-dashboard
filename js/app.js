@@ -54,6 +54,7 @@ const AppState = {
   previewChord:         null,   // chord being hovered/previewed on circle
   previewLocked:        false,  // true once user has clicked (locks preview in place)
   isPlayingProgression: false,  // true while progression sequence is playing
+  difficultyFilter:     'advanced', // 'beginner' | 'intermediate' | 'advanced'
 };
 
 // ─── Drag-to-reorder state ──────────────────────────────
@@ -91,6 +92,16 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-shift-down')?.addEventListener('click', () => _shiftChordShape(-1));
   document.getElementById('btn-shift-up')?.addEventListener('click',   () => _shiftChordShape(+1));
   document.getElementById('btn-glossary')?.addEventListener('click', () => openGlossaryModal(AppState));
+
+  // ── Difficulty / Player Level filter ──────────────────────────────────────
+  document.getElementById('difficulty-bar')?.addEventListener('click', e => {
+    const btn = e.target.closest('.difficulty-btn[data-level]');
+    if (!btn) return;
+    AppState.difficultyFilter = btn.dataset.level;
+    document.querySelectorAll('.difficulty-btn').forEach(b =>
+      b.classList.toggle('active', b === btn));
+    _renderAll();
+  });
 
   // ── Ctrl+click selection — handled on mousedown so it fires BEFORE the browser
   //    can interpret the event as a "copy drag" on draggable="true" chips.
@@ -493,7 +504,7 @@ function parseTabInput() {
 // ─── Chord Suggestion Click ────────────────────────────
 function onSuggestionClick(chord) {
   AppState.explorerChord = chord ?? null;
-  renderVoicingExplorer(AppState.explorerChord, AppState.tuning, onVoicingSelect, AppState.selectedFrets);
+  renderVoicingExplorer(AppState.explorerChord, AppState.tuning, onVoicingSelect, AppState.selectedFrets, AppState.difficultyFilter);
 }
 
 function onVoicingSelect(frets) {
@@ -911,7 +922,7 @@ function _renderAll() {
   }
 
   // Voicing explorer (persists until cleared or new chord selected)
-  renderVoicingExplorer(AppState.explorerChord, AppState.tuning, onVoicingSelect, AppState.selectedFrets);
+  renderVoicingExplorer(AppState.explorerChord, AppState.tuning, onVoicingSelect, AppState.selectedFrets, AppState.difficultyFilter);
 
   // All key-dependent panels use AppState.activeKey (which reflects manual overrides)
   const activeKey = AppState.activeKey;

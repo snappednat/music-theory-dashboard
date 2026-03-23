@@ -51,9 +51,9 @@ function _renderStringSelectors() {
   if (!container) return;
   container.innerHTML = '';
 
-  // Render from string 5 (high e, index 5) down to string 0 (low E, index 0)
-  // so the visual order top-to-bottom matches the fretboard display
-  for (let s = 5; s >= 0; s--) {
+  // Render from string 0 (low E, index 0) up to string 5 (high e, index 5)
+  // so String 6 (low E) appears first and String 1 (high e) appears last
+  for (let s = 0; s <= 5; s++) {
     const wrapper = document.createElement('div');
     wrapper.className = 'string-tuning';
 

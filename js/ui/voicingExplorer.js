@@ -21,7 +21,7 @@ let _activeKey = null;
  * @param {function}    onSelect    - (frets: number[]) → void
  * @param {number[]|null} currentFrets - current fretboard frets for VL scoring
  */
-export function renderVoicingExplorer(chord, tuning, onSelect, currentFrets = null) {
+export function renderVoicingExplorer(chord, tuning, onSelect, currentFrets = null, difficultyFilter = 'advanced') {
   const container = document.getElementById('voicing-explorer-panel');
   if (!container) return;
 
@@ -32,11 +32,24 @@ export function renderVoicingExplorer(chord, tuning, onSelect, currentFrets = nu
     return;
   }
 
-  const voicings = generateVoicings(chord.root, chord.quality, tuning);
-  if (voicings.length === 0) {
+  const allVoicings = generateVoicings(chord.root, chord.quality, tuning);
+  if (allVoicings.length === 0) {
     container.innerHTML = '';
     container.style.display = 'none';
     return;
+  }
+
+  // Filter by difficulty (cumulative: beginner ⊂ intermediate ⊂ advanced)
+  const _DIFF_RANK = { beginner: 0, intermediate: 1, advanced: 2 };
+  const maxRank = _DIFF_RANK[difficultyFilter] ?? 2;
+  let voicings = allVoicings.filter(v => (_DIFF_RANK[v.difficulty ?? 'advanced']) <= maxRank);
+  let _fallback = false;
+  if (voicings.length === 0) {
+    // Show the easiest available voicing with a note
+    voicings = [[...allVoicings].sort(
+      (a, b) => (_DIFF_RANK[a.difficulty ?? 'advanced']) - (_DIFF_RANK[b.difficulty ?? 'advanced'])
+    )[0]];
+    _fallback = true;
   }
 
   const wasHidden = container.style.display === 'none' || !container.style.display;
@@ -82,8 +95,13 @@ export function renderVoicingExplorer(chord, tuning, onSelect, currentFrets = nu
     return `<span class="ve-tuning-badge">${label}</span>`;
   })();
 
+  const fallbackNote = _fallback
+    ? `<div class="ve-fallback-note">No ${difficultyFilter} voicing available — showing simplest found</div>`
+    : '';
+
   container.innerHTML = `
     <div class="section-label">Voicings — ${chord.name}${tuningBadge}</div>
+    ${fallbackNote}
     <div class="ve-cards" id="ve-cards-row">${cardsHtml}</div>
   `;
 
