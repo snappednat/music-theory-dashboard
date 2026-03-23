@@ -437,7 +437,8 @@ function _generateAlgorithmicVoicings(rootPitch, targetPitches, tuning, spanLimi
           if (usedStr.has(s)) continue;
           for (let f = Math.max(0, rootFret - 1); f <= rootFret + spanLimit; f++) {
             if (normalizePitch(tuning[s] + f) === tp) {
-              const dist = Math.abs(f - rootFret);
+              // Open strings are always preferred over fretted notes
+              const dist = f === 0 ? -1 : Math.abs(f - rootFret);
               if (dist < bestDist) { bestDist = dist; bestStr = s; bestFret = f; }
             }
           }
@@ -456,7 +457,8 @@ function _generateAlgorithmicVoicings(rootPitch, targetPitches, tuning, spanLimi
         for (const tp of targetPitches) {
           for (let f = Math.max(0, rootFret - 1); f <= rootFret + spanLimit; f++) {
             if (normalizePitch(tuning[s] + f) === tp) {
-              const dist = Math.abs(f - rootFret);
+              // Open strings are always preferred over fretted notes
+              const dist = f === 0 ? -1 : Math.abs(f - rootFret);
               if (dist < bestDist) { bestDist = dist; bestFret = f; }
             }
           }
@@ -581,13 +583,17 @@ export function generateVoicings(rootPitch, quality, tuning) {
       .map(v => ({ ...v, label: v.label + ' (no 5)' })));
   }
 
-  // Deduplicate and limit
+  // Deduplicate, sort open-string-rich voicings first, then limit
   const seen = new Set();
   return voicings.filter(v => {
     const key = v.frets.join(',');
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
+  }).sort((a, b) => {
+    const openA = a.frets.filter(f => f === 0).length;
+    const openB = b.frets.filter(f => f === 0).length;
+    return openB - openA;
   }).slice(0, 8);
 }
 
