@@ -1,4 +1,4 @@
-import { CHROMATIC_SHARP, normalizePitch } from '../core/notes.js';
+import { CHROMATIC_SHARP, normalizePitch, pitchToNoteInKey } from '../core/notes.js';
 import { getDegreeInKey, DEGREE_NAMES, DEGREE_EXPLANATIONS, getChordNumeral, getHarmonicFunction } from '../core/keys.js';
 import { CHORD_QUALITY_LABELS } from '../core/chords.js';
 import { generateScale } from '../core/scales.js';
@@ -148,7 +148,156 @@ function _motionLabel(fromFn, toFn) {
   })[`${fromFn}→${toFn}`] ?? null;
 }
 
-function _chordCardHtml(chord, key, prevChord, nextChord, isFirstOccurrence) {
+/**
+ * Generate a "Why this works" explanation for a chord at position idx.
+ * Per-position (not per unique chord) so each occurrence gets its own context.
+ */
+function _whyThisWorks(chord, prevChord, nextChord, key, cadences, idx) {
+  const lines = [];
+
+  // 1. Cadence: does a cadence resolve ON this chord?
+  const cad = (cadences || []).find(c => c.idx === idx);
+  if (cad) {
+    const cadDesc = {
+      PAC: `${cad.chordA}→${cad.chordB} is an authentic cadence — the strongest resolution in tonal music. V moves to I with maximum pull.`,
+      IAC: `${cad.chordA}→${cad.chordB} forms an imperfect authentic cadence — a softer resolution that still aims home.`,
+      HC:  `Ending on ${cad.chordB} creates a half cadence — the harmony stops on V, leaving tension deliberately unresolved.`,
+      PC:  `${cad.chordA}→${cad.chordB} is a plagal cadence — the warm "Amen" resolution from IV to I.`,
+      DC:  `${cad.chordA}→${cad.chordB} is a deceptive cadence — V avoids the expected I and lands on vi instead, creating surprise.`,
+    }[cad.typeKey];
+    if (cadDesc) lines.push(cadDesc);
+  }
+
+  // 2. Secondary dominant resolution: prev was a V7/X pointing here
+  if (prevChord && !lines.length) {
+    const prevDeg = getDegreeInKey(prevChord.root, key);
+    if (prevDeg === null) {
+      const expectedRes = normalizePitch(prevChord.root + 7);
+      if (normalizePitch(chord.root) === expectedRes &&
+          (prevChord.quality === 'dom7' || prevChord.quality === 'dom9' || prevChord.quality === 'dom7sus4')) {
+        lines.push(`Resolves the secondary dominant — ${prevChord.name} pointed here, and this chord delivers the expected arrival.`);
+      }
+    }
+  }
+
+  // 3. Note-level bass motion — name specific notes for half-step and P4/P5
+  if (prevChord && !lines.length) {
+    const interval = normalizePitch(chord.root - prevChord.root + 12);
+    const fromNote = pitchToNoteInKey(prevChord.root, key.root);
+    const toNote   = pitchToNoteInKey(chord.root, key.root);
+    if (interval === 1) {
+      lines.push(`${fromNote} resolves up a half step to ${toNote} — a strong leading-tone pull.`);
+    } else if (interval === 11) {
+      lines.push(`${fromNote} slides down a half step to ${toNote} — chromatic voice-leading that feels inevitable.`);
+    } else if (interval === 5) {
+      lines.push(`Bass moves up a 4th (${fromNote}→${toNote}) — circle-of-fifths motion, one of the strongest harmonic propulsions.`);
+    } else if (interval === 7) {
+      lines.push(`Bass descends a 5th (${fromNote}→${toNote}) — smooth downward circle-of-fifths motion.`);
+    }
+  }
+
+  // 4. Functional motion interpretation (richer sentence than the arrow label)
+  if (prevChord && !lines.length) {
+    const prevFn = _getChordFn(prevChord, key);
+    const fn     = _getChordFn(chord, key);
+    const fnMap = {
+      'PD→D':  'Classic pre-dominant to dominant motion — sets up maximum tension before resolution.',
+      'D→T':   'Dominant resolves to tonic — the fundamental tension-release of tonal music.',
+      'T→PD':  'Tonic moves to pre-dominant — the harmony begins its journey away from rest.',
+      'T→D':   'Direct tonic-to-dominant leap — creates immediate energy without preparation.',
+      'TP→D':  'Tonic prolongation pivots into dominant — the harmony builds toward tension.',
+      'D→TP':  'Dominant moves to a tonic-area chord instead of I — soft resolution, avoids full closure.',
+      'PD→T':  'Pre-dominant resolves directly to tonic — plagal motion, warm and conclusive.',
+      'T→TP':  'Tonic colors into a related chord — stays in home territory with a slight shift.',
+      'TP→T':  'Drifts back to the tonic — a gentle return to rest after some color.',
+    };
+    const k2 = `${prevFn}→${fn}`;
+    if (fnMap[k2]) lines.push(fnMap[k2]);
+  }
+
+  // 5. Common-tone smoothness — append as a secondary line if we already have a primary
+  if (prevChord?.actualPitches && chord.actualPitches) {
+    const setA   = new Set(prevChord.actualPitches.map(p => normalizePitch(p)));
+    const shared = chord.actualPitches
+      .map(p => normalizePitch(p))
+      .filter(p => setA.has(p))
+      .map(p => pitchToNoteInKey(p, key.root));
+    if (shared.length >= 2) {
+      lines.push(`Shared tones ${shared.join(', ')} make this transition feel smooth — the ear follows the common notes.`);
+    }
+  }
+
+  if (!lines.length) return '';
+  return `<div class="theory-why-works">${lines.map(l => `<div class="theory-why-line">💡 ${l}</div>`).join('')}</div>`;
+}
+
+/**
+ * Aggregate "What's Missing / Notable" insights for the whole progression.
+ */
+function _whatsMissingHtml(chords, key, cadences, sections) {
+  if (!chords?.length || !key) return '';
+  const insights = [];
+
+  // No dominant chord used
+  const hasDominant = chords.some(c => getDegreeInKey(c.root, key) === 5);
+  if (!hasDominant) {
+    insights.push({ text: 'No dominant chord (V) used — tonal direction is subtle; the strongest pull toward home is absent.', type: 'missing' });
+  }
+
+  // No authentic cadence (V→I)
+  const hasAC = (cadences || []).some(c => c.typeKey === 'PAC' || c.typeKey === 'IAC');
+  if (!hasAC) {
+    insights.push({ text: 'No authentic cadence (V→I) — the progression never fully resolves. Intentional in loop-based writing, but limits closure.', type: 'missing' });
+  }
+
+  // Dominant not prepared by pre-dominant
+  if (hasDominant) {
+    let preparedV = false;
+    for (let i = 1; i < chords.length; i++) {
+      const deg     = getDegreeInKey(chords[i].root, key);
+      const prevDeg = getDegreeInKey(chords[i - 1].root, key);
+      if (deg === 5 && (prevDeg === 2 || prevDeg === 4)) { preparedV = true; break; }
+    }
+    if (!preparedV) {
+      insights.push({ text: 'Dominant (V) not preceded by ii or IV — the pull exists but lacks a classic ii–V–I or IV–V setup.', type: 'info' });
+    }
+  }
+
+  // No section contrast
+  if (sections?.length > 0) {
+    const types = new Set(sections.map(s => (s.id ?? '').split('-')[0]));
+    if (types.size < 2) {
+      insights.push({ text: 'No section contrast yet — all harmony stays in similar territory. A contrasting section would add structural arc.', type: 'missing' });
+    }
+  }
+
+  // Purely diatonic (no borrowed / chromatic chords)
+  const hasChromatic = chords.some(c => getDegreeInKey(c.root, key) === null);
+  if (!hasChromatic) {
+    insights.push({ text: 'Purely diatonic — clean and coherent, but a borrowed ♭VII, secondary dominant, or chromatic mediant could add expressive color.', type: 'info' });
+  }
+
+  // All plain triads — no extended voicings
+  const extQual = new Set(['maj7','min7','dom7','maj9','min9','dom9','add9','sus4','sus2',
+                           'min11','maj7s11','hdim7','dim7','minmaj7','dom7sus4','minadd9']);
+  const hasExtended = chords.some(c => extQual.has(c.quality));
+  if (!hasExtended) {
+    insights.push({ text: 'All plain triads — adding maj7, min7, or add9 colors would enrich the texture without changing harmonic function.', type: 'info' });
+  }
+
+  if (!insights.length) return '';
+  const items = insights.map(ins => `
+    <div class="theory-insight-item theory-insight-${ins.type}">
+      <span class="theory-insight-icon">${ins.type === 'missing' ? '⚠' : 'ℹ'}</span>
+      <span>${ins.text}</span>
+    </div>`).join('');
+  return `<div class="theory-insight-block">
+    <div class="theory-insight-header">What's Missing / Notable</div>
+    ${items}
+  </div>`;
+}
+
+function _chordCardHtml(chord, key, prevChord, nextChord, isFirstOccurrence, idx, cadences) {
   const deg = getDegreeInKey(chord.root, key);
   const dc  = deg ? key.diatonicChords[deg - 1] : null;
   const numeral   = dc?.numeral ?? '✦';
@@ -198,6 +347,7 @@ function _chordCardHtml(chord, key, prevChord, nextChord, isFirstOccurrence) {
     toHtml = `<div class="theory-motion-to theory-motion-edge">→ closes the progression</div>`;
   }
 
+  const whyHtml = _whyThisWorks(chord, prevChord, nextChord, key, cadences, idx);
   const numCls = _numeralClass(numeral);
   return `<div class="theory-chord-card">
     <div class="theory-chord-header">
@@ -208,6 +358,7 @@ function _chordCardHtml(chord, key, prevChord, nextChord, isFirstOccurrence) {
     ${identityHtml}
     ${qualityHtml}
     <div class="theory-motion">${fromHtml}${toHtml}</div>
+    ${whyHtml}
   </div>`;
 }
 
@@ -312,7 +463,7 @@ function _doRenderTheory() {
         const prevChord = gi > 0 ? chords[gi - 1] : null;
         const nextChord = gi < chords.length - 1 ? chords[gi + 1] : null;
 
-        html += _chordCardHtml(chord, key, prevChord, nextChord, isFirst);
+        html += _chordCardHtml(chord, key, prevChord, nextChord, isFirst, gi, cadences);
       }
 
       html += `</div></div>`;
@@ -350,7 +501,12 @@ function _doRenderTheory() {
     html += `<div class="theory-item cadence-item">${modHtml}</div>`;
   }
 
-  // ── E. Single chord fallback (no progression) ─────────────────────────────
+  // ── E. What's Missing / Notable ───────────────────────────────────────────
+  if (chords?.length && key) {
+    html += _whatsMissingHtml(chords, key, cadences, sections);
+  }
+
+  // ── F. Single chord fallback (no progression) ─────────────────────────────
   if (currentChord && (!chords || chords.length === 0)) {
     const tones    = currentChord.actualPitches ? currentChord.actualPitches.map(p => CHROMATIC_SHARP[p]).join(' – ') : '—';
     const qualLabel = CHORD_QUALITY_LABELS[currentChord.quality] || currentChord.quality;
