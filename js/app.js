@@ -900,7 +900,7 @@ function _renderAll() {
   renderKeyPanel(AppState.keyResults, AppState.activeKey, _applyManualKeyChange);
 
   // Chord suggestions
-  ChordSuggestions.renderChordSuggestions(AppState.activeKey, onSuggestionClick, _onChordHover, _onChordPreviewLock);
+  ChordSuggestions.renderChordSuggestions(AppState.activeKey, onSuggestionClick, _onChordHover, _onChordPreviewLock, AppState.tuning);
 
   // Scale suggestions panel (replaces manual scale buttons when confidence ≥ 0.50)
   const confidence = AppState.keyResults[0]?.confidence ?? 0;

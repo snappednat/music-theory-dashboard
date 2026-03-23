@@ -1,8 +1,9 @@
 import { pitchToNoteInKey, CHROMATIC_SHARP } from '../core/notes.js';
-import { getCommonVoicing } from '../core/chords.js';
+import { generateVoicings } from '../core/chords.js';
 import { DEGREE_FUNCTIONS } from '../core/keys.js';
 
 let _onSuggestionClick = null;
+let _currentTuning = [4, 9, 2, 7, 11, 4];
 
 /**
  * Render the diatonic chord suggestion grid for a key
@@ -10,8 +11,10 @@ let _onSuggestionClick = null;
  * @param {function} onSuggestionClick - (chord, voicing) => void
  * @param {function} [onHover]        - (chord|null) => void  — fired on mouseenter/mouseleave
  * @param {function} [onLock]         - (chord|null) => void  — fired on click (locks preview)
+ * @param {number[]} [tuning]         - current string tuning (pitch classes)
  */
-export function renderChordSuggestions(key, onSuggestionClick, onHover = null, onLock = null) {
+export function renderChordSuggestions(key, onSuggestionClick, onHover = null, onLock = null, tuning = null) {
+  if (tuning) _currentTuning = tuning;
   _onSuggestionClick = onSuggestionClick;
 
   const container = document.getElementById('suggestions-grid');
@@ -58,7 +61,8 @@ export function renderChordSuggestions(key, onSuggestionClick, onHover = null, o
 
     card.addEventListener('click', () => {
       const quality = card.dataset.quality;
-      const voicing = getCommonVoicing(root, quality);
+      const voicings = generateVoicings(root, quality, _currentTuning);
+      const voicing = voicings.length > 0 ? voicings[0].frets : null;
       onLock?.(chord);
       if (_onSuggestionClick) _onSuggestionClick(chord, voicing);
     });
