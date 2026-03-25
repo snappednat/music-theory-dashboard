@@ -180,60 +180,36 @@ export const CHORD_QUALITY_LABELS = {
 
 // ─── Difficulty classification ────────────────────────────────────────────────
 
-const _DIFF_RANK = { beginner: 0, intermediate: 1, advanced: 2 };
-
-/** Map chord quality → minimum difficulty level for that sound. */
+/** Map chord quality → tier: 'basic' | 'color' | 'advanced'.
+ *  Tier communicates "how far out is this chord?" not skill level.
+ *  Anything not listed defaults to 'advanced'. */
 export const QUALITY_DIFFICULTY = {
-  // Beginner — simple, commonly taught first
-  maj:'beginner', min:'beginner', sus2:'beginner', sus4:'beginner',
-  add9:'beginner', pow5:'beginner', minadd9:'beginner',
-  // Intermediate — 7ths, 6ths, 9ths, basic extensions
-  dom7:'intermediate', maj7:'intermediate', min7:'intermediate',
-  dim:'intermediate',  dim7:'intermediate', hdim7:'intermediate', aug:'intermediate',
-  maj6:'intermediate', min6:'intermediate', dom9:'intermediate',
-  maj9:'intermediate', min9:'intermediate', minmaj7:'intermediate',
-  maj6add9:'intermediate', augmaj7:'intermediate', dom7sus4:'intermediate',
-  dom7sus2:'intermediate', maj7sus2:'intermediate', maj7sus4:'intermediate',
-  add4:'intermediate', minadd4:'intermediate', sus2sus4:'intermediate',
-  maj11:'intermediate', min11:'intermediate', dom11:'intermediate',
-  min13:'intermediate', maj13:'intermediate', dom13:'intermediate',
-  majb5:'intermediate', dom13sus4:'intermediate', minmaj9:'intermediate',
-  // Everything not listed → defaults to 'advanced'
+  // Basic — core triads and 7th essentials
+  maj:'basic', min:'basic', sus2:'basic', sus4:'basic', pow5:'basic',
+  dom7:'basic', maj7:'basic', min7:'basic',
+  // Color — expressive extensions and common variations
+  add9:'color', minadd9:'color',
+  dim:'color', aug:'color', hdim7:'color',
+  maj6:'color', min6:'color',
+  dom9:'color', maj9:'color', min9:'color',
+  minmaj7:'color', maj6add9:'color',
+  dom7sus4:'color', dom7sus2:'color', maj7sus2:'color', maj7sus4:'color',
+  add4:'color', minadd4:'color', sus2sus4:'color',
+  maj11:'color', min11:'color', dom11:'color',
+  min13:'color', maj13:'color', dom13:'color',
+  majb5:'color', dom13sus4:'color', minmaj9:'color',
+  dom7no5:'color', maj7no5:'color', min7no5:'color',
+  dom9no5:'color', maj9no5:'color', min9no5:'color', min11no5:'color',
+  // Advanced — dim7, augmaj7, and all altered/exotic qualities (rest default to 'advanced')
+  dim7:'advanced', augmaj7:'advanced',
 };
 
-/** Classify a voicing shape by mechanical difficulty (finger count, span, barre). */
-function _mechanicsDifficulty(frets, isBarre) {
-  const frettedOnly = frets.filter(f => f > 0);
-  const fingers     = countFingers(frets);
-  const span        = frettedOnly.length > 1
-    ? Math.max(...frettedOnly) - Math.min(...frettedOnly) : 0;
-  const hasOpen     = frets.some(f => f === 0);
-  // Beginner: open-position chord (≥1 open string), ≤4 effective fingers, span ≤2.
-  // 4-finger open chords like C7 (x32310) are standard beginner guitar chords.
-  // Partial barres on open chords (e.g. A major x02220) are still beginner-accessible.
-  if (hasOpen && fingers <= 4 && span <= 2) return 'beginner';
-  // Intermediate: full barre chord or closed position ≤4 fingers with span ≤3
-  if (isBarre || (fingers <= 4 && span <= 3)) return 'intermediate';
-  return 'advanced';
-}
-
 /**
- * Return the difficulty rating for a voicing.
- * For open-position shapes, mechanics alone determine difficulty — a G7 or Am7
- * in open position is a beginner chord regardless of quality name.
- * For closed-position shapes, quality provides a floor (dom7b9 stays advanced).
- * @export so voicingExplorer can reference it if needed.
+ * Return the tier for a voicing based solely on chord quality.
+ * Tier = 'basic' | 'color' | 'advanced'.
  */
 export function voicingDifficulty(frets, quality, isBarre = false) {
-  const mechRank = _DIFF_RANK[_mechanicsDifficulty(frets, isBarre)];
-  const hasOpen  = frets.some(f => f === 0);
-
-  // Open-position voicings: shape difficulty = mechanics only.
-  if (hasOpen) return ['beginner', 'intermediate', 'advanced'][mechRank];
-
-  // Closed-position shapes: quality rank provides a floor.
-  const qualRank = _DIFF_RANK[QUALITY_DIFFICULTY[quality] ?? 'advanced'];
-  return ['beginner', 'intermediate', 'advanced'][Math.max(qualRank, mechRank)];
+  return QUALITY_DIFFICULTY[quality] ?? 'advanced';
 }
 
 // ─── Chord Name Parser ────────────────────────────────────────────────────────

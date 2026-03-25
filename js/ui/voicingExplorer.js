@@ -39,22 +39,21 @@ export function renderVoicingExplorer(chord, tuning, onSelect, currentFrets = nu
     return;
   }
 
-  // Filter by difficulty (cumulative: beginner ⊂ intermediate ⊂ advanced)
-  const _DIFF_RANK = { beginner: 0, intermediate: 1, advanced: 2 };
+  // Filter by tier (cumulative: basic ⊂ color ⊂ advanced)
+  const _DIFF_RANK = { basic: 0, color: 1, advanced: 2 };
   const maxRank = _DIFF_RANK[difficultyFilter] ?? 2;
   let voicings = allVoicings.filter(v => (_DIFF_RANK[v.difficulty ?? 'advanced']) <= maxRank);
 
-  // If no voicings match the selected level, show an informative empty state —
-  // never fall back to a harder voicing, as that defeats the purpose of the filter.
+  // If no voicings match the selected tier, show an informative empty state.
   if (voicings.length === 0) {
-    const levelLabels = { beginner: 'Beginner', intermediate: 'Intermediate', advanced: 'Advanced' };
-    const nextLevel   = difficultyFilter === 'beginner' ? 'Intermediate' : 'Advanced';
+    const levelLabels = { basic: 'Basic', color: 'Color', advanced: 'Advanced' };
+    const nextLevel   = difficultyFilter === 'basic' ? 'Color' : 'Advanced';
     container.style.display = '';
     container.innerHTML = `
       <div class="section-label">Voicings — ${chord.name}</div>
       <div class="ve-no-voicing">
-        No open-position ${levelLabels[difficultyFilter] ?? difficultyFilter} shape available for <strong>${chord.name}</strong>.
-        Switch to <strong>${nextLevel}</strong> to see barre chord shapes.
+        No ${levelLabels[difficultyFilter] ?? difficultyFilter} shape available for <strong>${chord.name}</strong>.
+        Switch to <strong>${nextLevel}</strong> to see voicings.
       </div>`;
     return;
   }
@@ -148,8 +147,8 @@ export function renderAltVoicings(chord, tuning, onSelect, currentFrets = null, 
   const allVoicings = generateVoicings(chord.root, chord.quality, tuning);
   if (!allVoicings?.length) { container.style.display = 'none'; return; }
 
-  // Filter by difficulty; fall back to all voicings if none match
-  const _RANK = { beginner: 0, intermediate: 1, advanced: 2 };
+  // Filter by tier; fall back to all voicings if none match
+  const _RANK = { basic: 0, color: 1, advanced: 2 };
   const maxRank = _RANK[difficultyFilter] ?? 2;
   const filtered = allVoicings.filter(v => (_RANK[v.difficulty ?? 'advanced']) <= maxRank);
   const voicings = filtered.length ? filtered : allVoicings;

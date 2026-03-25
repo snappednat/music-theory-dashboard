@@ -54,7 +54,7 @@ const AppState = {
   previewChord:         null,   // chord being hovered/previewed on circle
   previewLocked:        false,  // true once user has clicked (locks preview in place)
   isPlayingProgression: false,  // true while progression sequence is playing
-  difficultyFilter:     'advanced', // 'beginner' | 'intermediate' | 'advanced'
+  difficultyFilter:     'advanced', // 'basic' | 'color' | 'advanced'
 };
 
 // ─── Drag-to-reorder state ──────────────────────────────

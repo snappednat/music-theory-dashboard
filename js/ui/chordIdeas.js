@@ -6,7 +6,7 @@
  */
 
 import { getChordIdeas, getChordNumeral, getDegreeInKey, getHarmonicFunction } from '../core/keys.js';
-import { generateVoicings }     from '../core/chords.js';
+import { generateVoicings, QUALITY_DIFFICULTY } from '../core/chords.js';
 import { buildChordDiagramHtml } from './voicingExplorer.js';
 import { playChord }             from '../core/audio.js';
 
@@ -34,7 +34,7 @@ let _savedActiveKey        = null;
 let _savedProgression      = null;
 let _savedLastChord        = null;   // current fretboard chord — context for transition sorting
 let _savedTuning           = null;
-let _savedDifficultyFilter = 'advanced'; // 'beginner' | 'intermediate' | 'advanced'
+let _savedDifficultyFilter = 'advanced'; // 'basic' | 'color' | 'advanced'
 let _savedOnVoicingPreview = null;
 let _savedOnAdd            = null;
 let _savedOnHover          = null;  // (chord|null) => void — circle preview on hover
@@ -52,7 +52,7 @@ let _savedOnLock           = null;  // (chord|null) => void — lock preview on 
  * @param {function}    [onHover]          - (chord|null) → void   hover preview on circle
  * @param {function}    [onLock]           - (chord|null) → void   lock preview on expand/collapse
  * @param {object|null} [lastChord]        - current fretboard chord used to context-sort suggestions
- * @param {string}      [difficultyFilter] - 'beginner' | 'intermediate' | 'advanced'
+ * @param {string}      [difficultyFilter] - 'basic' | 'color' | 'advanced'
  */
 export function renderChordIdeas(activeKey, progression, tuning, onVoicingPreview, onAddToProgression, onHover = null, onLock = null, lastChord = null, difficultyFilter = 'advanced') {
   _savedActiveKey        = activeKey;
@@ -225,10 +225,18 @@ function _doRender() {
   }
 
   // ── Partition ideas ────────────────────────────────────────────────────────
-  const FIT_RANK = { green: 0, yellow: 1, red: 2 };
+  const FIT_RANK  = { green: 0, yellow: 1, red: 2 };
+  const TIER_RANK = { basic: 0, color: 1, advanced: 2 };
   const sorted = [..._ideas].sort((a, b) => {
+    // 1. Most musically appropriate: diatonic (green) → functional (yellow) → chromatic (red)
     const fd = (FIT_RANK[a.fit] ?? 1) - (FIT_RANK[b.fit] ?? 1);
-    return fd !== 0 ? fd : (b.transitionScore ?? 0) - (a.transitionScore ?? 0);
+    if (fd !== 0) return fd;
+    // 2. Most playable/common first: Basic before Color before Advanced
+    const aTier = TIER_RANK[QUALITY_DIFFICULTY[a.quality] ?? 'advanced'] ?? 2;
+    const bTier = TIER_RANK[QUALITY_DIFFICULTY[b.quality] ?? 'advanced'] ?? 2;
+    const td = aTier - bTier;
+    // 3. Richer alternatives: higher transitionScore as final tiebreak
+    return td !== 0 ? td : (b.transitionScore ?? 0) - (a.transitionScore ?? 0);
   });
   const topPicks   = sorted.slice(0, 6);
   const topPickSet = new Set(topPicks.map(i => `${i.root},${i.quality}`));
@@ -460,7 +468,7 @@ function _fitLabel(fit) {
 
 // ─── Inline expansion HTML ────────────────────────────────────────────────────
 
-const _IDEA_DIFF_RANK = { beginner: 0, intermediate: 1, advanced: 2 };
+const _IDEA_DIFF_RANK = { basic: 0, color: 1, advanced: 2 };
 
 function _buildExpansion(idea) {
   const allVoicings = generateVoicings(idea.root, idea.quality, _savedTuning);
@@ -475,8 +483,8 @@ function _buildExpansion(idea) {
 
   // If no voicings match the difficulty level, show an informative message
   if (!voicings) {
-    const levelLabel = _savedDifficultyFilter.charAt(0).toUpperCase() + _savedDifficultyFilter.slice(1);
-    const nextLevel  = _savedDifficultyFilter === 'beginner' ? 'Intermediate' : 'Advanced';
+    const levelLabel = { basic: 'Basic', color: 'Color', advanced: 'Advanced' }[_savedDifficultyFilter] ?? _savedDifficultyFilter;
+    const nextLevel  = _savedDifficultyFilter === 'basic' ? 'Color' : 'Advanced';
     return `
       <div class="idea-expansion">
         <p class="idea-no-voicings">No ${levelLabel} shape available — switch to ${nextLevel} to see voicings.</p>
