@@ -13,7 +13,7 @@ import { renderKeyPanel }    from './panels/keyPanel.js';
 import { renderTheoryPanel, renderProgressionStory, _chordRichness } from './panels/theoryPanel.js';
 import { renderRelationshipAnalyzer } from './panels/relationshipAnalyzer.js';
 import { renderScaleSuggestions } from './ui/scaleSuggestions.js';
-import { renderVoicingExplorer }  from './ui/voicingExplorer.js';
+import { renderVoicingExplorer, renderAltVoicings } from './ui/voicingExplorer.js';
 import { renderChordIdeas }       from './ui/chordIdeas.js';
 import { renderFunctionFlowchart } from './ui/functionFlowchart.js';
 import { openGlossaryModal, renderGlossaryModal } from './ui/glossaryModal.js';
@@ -101,6 +101,33 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.difficulty-btn').forEach(b =>
       b.classList.toggle('active', b === btn));
     _renderAll();
+  });
+
+  // ── Collapsible panel toggles (Tuning, Circle of Fifths) ──────────────────
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('.panel-collapse-header');
+    if (!btn) return;
+    // Scale suggestions has its own inline handler — skip here to avoid double-toggle
+    if (btn.closest('#scale-suggestions-panel')) return;
+    const bodyId = btn.getAttribute('aria-controls');
+    const body   = bodyId ? document.getElementById(bodyId) : null;
+    if (!body) return;
+    const nowExpanded = body.style.display === 'none' || !body.style.display;
+    body.style.display = nowExpanded ? '' : 'none';
+    btn.setAttribute('aria-expanded', String(nowExpanded));
+    const chev = btn.querySelector('.panel-chevron');
+    if (chev) chev.textContent = nowExpanded ? '▼' : '▶';
+  });
+
+  // ── Theory Explanation Modal ───────────────────────────────────────────────
+  const _theoryOverlay = document.getElementById('theory-modal-overlay');
+  const _openTheory    = () => { if (_theoryOverlay) _theoryOverlay.style.display = 'flex'; };
+  const _closeTheory   = () => { if (_theoryOverlay) _theoryOverlay.style.display = 'none'; };
+  document.getElementById('btn-theory-modal')?.addEventListener('click', _openTheory);
+  document.getElementById('btn-theory-modal-close')?.addEventListener('click', _closeTheory);
+  _theoryOverlay?.addEventListener('click', e => { if (e.target === _theoryOverlay) _closeTheory(); });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && _theoryOverlay?.style.display !== 'none') _closeTheory();
   });
 
   // ── Ctrl+click selection — handled on mousedown so it fires BEFORE the browser
@@ -287,9 +314,45 @@ function onFretClick(stringIdx, fret) {
 }
 
 // ─── Tuning Change ─────────────────────────────────────
+
+/** Average fret position of non-muted strings (open strings excluded). */
+function _avgFret(frets) {
+  const active = frets.filter(f => f > 0);
+  return active.length ? active.reduce((s, f) => s + f, 0) / active.length : 0;
+}
+
+/** Pick the voicing whose average fret is closest to the original shape's position. */
+function _closestVoicing(voicings, originalFrets) {
+  const target = _avgFret(originalFrets);
+  return voicings.reduce((best, v) =>
+    Math.abs(_avgFret(v.frets) - target) < Math.abs(_avgFret(best.frets) - target) ? v : best
+  , voicings[0]);
+}
+
 function onTuningChange(newTuning) {
   AppState.tuning = newTuning;
-  // Re-analyze with new tuning (fret positions unchanged)
+
+  // Re-voice every progression chord for the new tuning.
+  // Preserve root+quality; pick the voicing closest to the original neck position.
+  AppState.progression = AppState.progression.map(chord => {
+    if (chord.root == null || !chord.quality) return chord;
+    const voicings = generateVoicings(chord.root, chord.quality, newTuning);
+    if (!voicings.length) return chord;
+    const best = _closestVoicing(voicings, chord.frets ?? []);
+    return { ...chord, frets: best.frets.slice() };
+  });
+
+  // Re-voice the current fretboard chord if one is recognized.
+  if (AppState.currentChord?.root != null && AppState.currentChord?.quality) {
+    const voicings = generateVoicings(
+      AppState.currentChord.root, AppState.currentChord.quality, newTuning
+    );
+    if (voicings.length) {
+      const best = _closestVoicing(voicings, AppState.selectedFrets);
+      AppState.selectedFrets = best.frets.slice();
+    }
+  }
+
   _analyzeAndRender();
 }
 
@@ -760,6 +823,23 @@ function _analyzeAndRender() {
     AppState.activeKey = AppState.keyResults[0].key;
   }
 
+  // 3b. Power-chord disambiguation: if the identified chord is a bare 5th (root + 5th only)
+  // and we have key context, infer the diatonic triad quality instead.
+  // E.g. {E,B} in G-major context → Em (not E5).  No key context → keep E5.
+  if (AppState.currentChord?.quality === 'pow5' && AppState.activeKey) {
+    const r = AppState.currentChord.root % 12;
+    const diatonic = AppState.activeKey.diatonicChords?.find(dc => dc.root % 12 === r);
+    if (diatonic) {
+      AppState.currentChord = {
+        ...AppState.currentChord,
+        quality:     diatonic.quality,
+        name:        diatonic.name,
+        pitches:     diatonic.pitches,
+        inferred5th: true,   // flag: third was absent, quality inferred from key
+      };
+    }
+  }
+
   // If the key changed, queue a glow pulse on the key panel after render
   const keyChanged = AppState.activeKey &&
     (AppState.activeKey.root !== prevKeyRoot || AppState.activeKey.quality !== prevKeyQuality);
@@ -920,6 +1000,9 @@ function _renderAll() {
   if (manualScaleControls) {
     manualScaleControls.style.display = AppState.activeKey && confidence >= 0.50 ? 'none' : '';
   }
+
+  // Alternate voicings for the chord currently on the fretboard
+  renderAltVoicings(AppState.currentChord, AppState.tuning, onVoicingSelect, AppState.selectedFrets, AppState.difficultyFilter);
 
   // Voicing explorer (persists until cleared or new chord selected)
   renderVoicingExplorer(AppState.explorerChord, AppState.tuning, onVoicingSelect, AppState.selectedFrets, AppState.difficultyFilter);

@@ -57,6 +57,13 @@ export function detectCadences(progression, key) {
     const degA = getDegreeInKey(chordA.root, key);
     const degB = getDegreeInKey(chordB.root, key);
 
+    // A cadence is "structural" (true) when it lands at the final chord of the
+    // progression OR at a section boundary. Mid-loop occurrences of the same
+    // interval pattern are harmonic *motion*, not cadences.
+    const atEnd            = i === progression.length - 1;
+    const atSectionBound   = chordA.section != null && chordB.section != null && chordA.section !== chordB.section;
+    const isTrueCadence    = atEnd || atSectionBound;
+
     // Also check harmonic minor V (major V chord in minor key)
     const isVChord = (degA === 5) ||
       (key.harmonicV && normalizePitch(chordA.root) === normalizePitch(key.harmonicV.root) &&
@@ -70,6 +77,7 @@ export function detectCadences(progression, key) {
         type: CADENCE_TYPES.PAC,
         chordA: chordA.name,
         chordB: chordB.name,
+        isTrueCadence,
       });
       continue;
     }
@@ -82,6 +90,7 @@ export function detectCadences(progression, key) {
         type: CADENCE_TYPES.DC,
         chordA: chordA.name,
         chordB: chordB.name,
+        isTrueCadence,
       });
       continue;
     }
@@ -94,6 +103,7 @@ export function detectCadences(progression, key) {
         type: CADENCE_TYPES.PC,
         chordA: chordA.name,
         chordB: chordB.name,
+        isTrueCadence,
       });
       continue;
     }
@@ -114,6 +124,7 @@ export function detectCadences(progression, key) {
         type: CADENCE_TYPES.HC,
         chordA: progression.length >= 2 ? progression[progression.length - 2].name : '?',
         chordB: lastChord.name,
+        isTrueCadence: true,
       });
     }
   }
@@ -134,6 +145,7 @@ export function detectCadences(progression, key) {
           chordA: i > 0 ? progression[i - 1].name : '?',
           chordB: chord.name,
           isSectionBoundary: true,
+          isTrueCadence: true,
         });
       }
     }

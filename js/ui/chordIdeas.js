@@ -96,6 +96,47 @@ function _intentGroup(idea, key) {
   return 'color';
 }
 
+// Quality-specific flavour for tonic-landing labels
+const _TONIC_LANDING = {
+  maj:        'Returns home',
+  min:        'Returns home — dark tonic',
+  maj7:       'Returns home — warm, settled',
+  min7:       'Returns home — dark, warm',
+  maj9:       'Returns home — lush tonic extension',
+  min9:       'Returns home — dark, rich',
+  add9:       'Returns home — bright 9th colour',
+  minadd9:    'Returns home — dark, airy',
+  maj6:       'Returns home — jazzy 6th',
+  min6:       'Returns home — bittersweet 6th',
+  maj6add9:   'Returns home — open, jazzy 6/9',
+  maj13:      'Returns home — full, rich extension',
+  min13:      'Returns home — deep, jazzy minor',
+  sus2:       'Returns home — floating sus2',
+  sus4:       'Returns home — suspended 4th',
+  pow5:       'Returns home — open root (no 3rd)',
+  aug:        'Returns home — dreamy, unresolved',
+  augmaj7:    'Returns home — ethereal augmented',
+  minmaj7:    'Returns home — dark, bittersweet',
+};
+
+// Quality-specific flavour for dominant→tonic motion
+const _RESOLVE_MOTION = {
+  maj:        'resolves to tonic',
+  min:        'resolves to tonic (minor)',
+  maj7:       'resolves to tonic major 7th — warm landing',
+  min7:       'resolves to tonic minor 7th',
+  maj9:       'resolves to lush tonic major 9th',
+  min9:       'resolves to rich tonic minor 9th',
+  add9:       'resolves to tonic with bright 9th',
+  minadd9:    'resolves to tonic minor with 9th',
+  maj6:       'resolves to jazzy tonic 6th',
+  maj6add9:   'resolves to open, jazzy tonic 6/9',
+  sus2:       'resolves to suspended tonic — still floating',
+  sus4:       'resolves to suspended tonic — still floating',
+  pow5:       'resolves to open, ambiguous tonic root',
+  aug:        'resolves — but augmented tonic stays dreamy',
+};
+
 function _outcomeLabel(idea, key) {
   if (idea.category === 'secondary') {
     const m = idea.reason.match(/V7? of ([^—\s][^—]*?)(?:\s—|$)/);
@@ -109,7 +150,10 @@ function _outcomeLabel(idea, key) {
   const deg = getDegreeInKey(idea.root, key);
   if (deg !== null) {
     const fn = getHarmonicFunction(deg, key.quality);
-    if (fn === 'T')  return deg === 1 ? 'Returns home' : 'Soft resolution';
+    if (fn === 'T') {
+      if (deg === 1) return _TONIC_LANDING[idea.quality] ?? 'Returns home';
+      return 'Soft resolution';
+    }
     if (fn === 'D')  return idea.category === 'altered' ? 'Dominant with tension' : 'Builds tension toward home';
     if (fn === 'TP') return 'Extends tonic area';
     if (fn === 'PD') return 'Prepares dominant';
@@ -142,10 +186,15 @@ function _transitionReason(lastChord, idea, key) {
   let label = null;
   if      (lastFn === 'PD' && ideaFn === 'D')                    label = 'increases tension';
   else if (lastFn === 'PD' && ideaFn === 'T' && ideaDeg === 1)   label = 'plagal resolution — smooth';
-  else if (lastFn === 'D'  && ideaFn === 'T')                    label = 'resolves dominant tension';
+  else if (lastFn === 'D'  && ideaFn === 'T') {
+    label = ideaDeg === 1
+      ? (_RESOLVE_MOTION[idea.quality] ?? 'resolves dominant tension')
+      : 'deceptive resolution — avoids tonic';
+  }
   else if (lastFn === 'T'  && ideaFn === 'D')                    label = 'jumps to dominant — energetic';
   else if (lastFn === 'T'  && ideaFn === 'PD')                   label = 'begins motion away from home';
   else if (lastFn === 'TP' && ideaFn === 'D')                    label = 'moves toward dominant';
+  else if (lastFn === ideaFn && ideaDeg === lastDeg)              label = 'tonic colour change';
   else if (lastFn === ideaFn)                                     label = 'stays in same harmonic area';
 
   return label ? `${lNum}→${iNum}: ${label}` : null;

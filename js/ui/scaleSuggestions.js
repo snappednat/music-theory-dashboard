@@ -11,6 +11,7 @@ import { getScaleSuggestions, getScalePositions, SCALE_DISPLAY_NAMES, SCALE_FORM
 // Per-scale-type position index state (persists across re-renders)
 const _posState = new Map(); // scaleType → positionIndex
 let _showAll = false;
+let _sscCollapsed = true; // default collapsed; persists across re-renders
 // Compact cards the user has expanded inline
 const _expandedCompact = new Set();
 
@@ -55,17 +56,33 @@ export function renderScaleSuggestions(activeKey, tuning, onActivate, progressio
   const hasProgression = progression.length > 0;
 
   container.innerHTML = `
-    <div class="section-label">Suggested Scales</div>
-    <div class="ssc-cards" id="ssc-cards-row">${topCardsHtml}</div>
-    ${hasProgression ? `
-      <div class="ssc-show-all-row">
-        <button class="ssc-btn" id="ssc-show-all-btn">${_showAll ? 'Hide extra scales' : 'Show all scales'}</button>
-      </div>
-      <div class="ssc-cards ssc-all-cards" id="ssc-all-row" style="${_showAll ? '' : 'display:none'}">${restCardsHtml}</div>
-    ` : ''}
+    <button class="panel-collapse-header" aria-expanded="${!_sscCollapsed}" aria-controls="ssc-body">
+      <span class="section-label">Suggested Scales</span>
+      <span class="panel-chevron">${_sscCollapsed ? '▶' : '▼'}</span>
+    </button>
+    <div class="panel-collapsible-body" id="ssc-body" style="${_sscCollapsed ? 'display:none' : ''}">
+      <div class="ssc-cards" id="ssc-cards-row">${topCardsHtml}</div>
+      ${hasProgression ? `
+        <div class="ssc-show-all-row">
+          <button class="ssc-btn" id="ssc-show-all-btn">${_showAll ? 'Hide extra scales' : 'Show all scales'}</button>
+        </div>
+        <div class="ssc-cards ssc-all-cards" id="ssc-all-row" style="${_showAll ? '' : 'display:none'}">${restCardsHtml}</div>
+      ` : ''}
+    </div>
   `;
 
   // Wire events
+  container.querySelector('.panel-collapse-header')?.addEventListener('click', () => {
+    _sscCollapsed = !_sscCollapsed;
+    const body = document.getElementById('ssc-body');
+    const btn  = container.querySelector('.panel-collapse-header');
+    if (body) body.style.display = _sscCollapsed ? 'none' : '';
+    if (btn)  {
+      btn.setAttribute('aria-expanded', String(!_sscCollapsed));
+      const chev = btn.querySelector('.panel-chevron');
+      if (chev) chev.textContent = _sscCollapsed ? '▶' : '▼';
+    }
+  });
   container.querySelector('#ssc-cards-row')?.addEventListener('click', e => _handleCardClick(e, activeKey, tuning, onActivate, progression));
   container.querySelector('#ssc-all-row')?.addEventListener('click', e => _handleCardClick(e, activeKey, tuning, onActivate, progression));
   container.querySelector('#ssc-show-all-btn')?.addEventListener('click', () => {

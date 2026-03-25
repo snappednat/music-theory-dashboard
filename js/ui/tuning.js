@@ -8,6 +8,9 @@ export const TUNING_PRESETS = [
   { label: 'DADGAD',           tuning: [2, 9, 2, 7, 9, 2] },
   { label: 'Eb Standard',      tuning: [3, 8, 1, 6, 10, 3] },
   { label: 'Drop C',           tuning: [0, 8, 2, 7, 11, 4] },
+  { label: 'B Standard',       tuning: [11, 4, 9, 2, 6, 11] },
+  { label: 'A Standard (P5)',  tuning: [9, 2, 7, 0, 4, 9] },
+  { label: 'D-G-D-F#-G-G',    tuning: [2, 7, 2, 6, 7, 7] },
 ];
 
 // String names for UI labels (index 0 = string 6 / low E, index 5 = string 1 / high e)
@@ -76,13 +79,25 @@ function _renderStringSelectors() {
     select.addEventListener('change', () => {
       _currentTuning[s] = parseInt(select.value, 10);
       _checkPresetMatch();
-      _onTuningChange([..._currentTuning]);
+      // Do NOT fire tuning change here — user must click Apply
+      _markPendingChange();
     });
 
     wrapper.appendChild(label);
     wrapper.appendChild(select);
     container.appendChild(wrapper);
   }
+
+  // Apply button — commits custom string tuning
+  const applyBtn = document.createElement('button');
+  applyBtn.id = 'tuning-apply-btn';
+  applyBtn.className = 'tuning-apply-btn';
+  applyBtn.textContent = 'Apply';
+  applyBtn.addEventListener('click', () => {
+    _onTuningChange([..._currentTuning]);
+    _clearPendingChange();
+  });
+  container.appendChild(applyBtn);
 }
 
 function _syncSelectors() {
@@ -96,6 +111,14 @@ function _syncSelectors() {
 function _highlightActivePreset(activeBtn) {
   document.querySelectorAll('.tuning-preset-btn').forEach(b => b.classList.remove('active'));
   if (activeBtn) activeBtn.classList.add('active');
+}
+
+function _markPendingChange() {
+  document.getElementById('tuning-apply-btn')?.classList.add('pending');
+}
+
+function _clearPendingChange() {
+  document.getElementById('tuning-apply-btn')?.classList.remove('pending');
 }
 
 function _checkPresetMatch() {

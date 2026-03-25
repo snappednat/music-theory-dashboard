@@ -128,6 +128,67 @@ export function renderVoicingExplorer(chord, tuning, onSelect, currentFrets = nu
   });
 }
 
+// ─── Alternate Voicings for Current Chord ────────────────────────────────────
+
+/**
+ * Render a compact row of alternate voicings for the chord currently on the
+ * fretboard. The active voicing (matching currentFrets) is highlighted.
+ * Clicking a card calls onSelect(frets) to load it onto the fretboard.
+ */
+export function renderAltVoicings(chord, tuning, onSelect, currentFrets = null, difficultyFilter = 'advanced') {
+  const container = document.getElementById('alt-voicings-panel');
+  if (!container) return;
+
+  if (!chord) {
+    container.innerHTML = '';
+    container.style.display = 'none';
+    return;
+  }
+
+  const allVoicings = generateVoicings(chord.root, chord.quality, tuning);
+  if (!allVoicings?.length) { container.style.display = 'none'; return; }
+
+  // Filter by difficulty; fall back to all voicings if none match
+  const _RANK = { beginner: 0, intermediate: 1, advanced: 2 };
+  const maxRank = _RANK[difficultyFilter] ?? 2;
+  const filtered = allVoicings.filter(v => (_RANK[v.difficulty ?? 'advanced']) <= maxRank);
+  const voicings = filtered.length ? filtered : allVoicings;
+
+  const currentKey = (currentFrets || []).join(',');
+
+  const cards = voicings.map((v, i) => {
+    const key    = v.frets.join(',');
+    const active = key === currentKey;
+    const diag   = buildChordDiagramHtml(v.frets, tuning, chord.root);
+    const minFret = v.frets.filter(f => f > 0);
+    const label  = minFret.length ? `${Math.min(...minFret)}fr` : 'Open';
+    return `<div class="ve-card alt-ve-card${active ? ' ve-active' : ''}" data-frets="${key}" data-idx="${i}">
+      ${diag}
+      <span class="ve-fret-label">${label}</span>
+    </div>`;
+  }).join('');
+
+  container.style.display = '';
+  container.innerHTML = `
+    <div class="alt-voicings-header">
+      <span class="section-label">Alternate Voicings — ${chord.name}</span>
+    </div>
+    <div class="ve-cards">${cards}</div>
+  `;
+
+  if (!container.dataset.altListenerAttached) {
+    container.dataset.altListenerAttached = '1';
+    container.addEventListener('click', e => {
+      const card = e.target.closest('.alt-ve-card');
+      if (!card) return;
+      const frets = card.dataset.frets.split(',').map(Number);
+      container.querySelectorAll('.alt-ve-card').forEach(c => c.classList.remove('ve-active'));
+      card.classList.add('ve-active');
+      onSelect(frets);
+    });
+  }
+}
+
 // ─── Chord diagram SVG ───────────────────────────────────────────────────────
 
 /**

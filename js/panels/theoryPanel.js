@@ -137,12 +137,12 @@ function _motionLabel(fromFn, toFn) {
     'TP→TP': 'tonic area — floating',
     'TP→PD': 'moves toward pre-dominant',
     'TP→D':  'pushes toward dominant tension',
-    'PD→T':  'plagal resolution — "Amen" cadence',
+    'PD→T':  'plagal motion — IV steps home',
     'PD→PD': 'pre-dominant extension',
     'PD→D':  'sets up dominant tension',
     'PD→TP': 'sidesteps to relative — softens motion',
-    'D→T':   'resolves tension home',
-    'D→TP':  'deceptive — avoids full resolution',
+    'D→T':   'dominant motion resolving home',
+    'D→TP':  'dominant sidesteps to relative — avoids full resolution',
     'D→PD':  'delays resolution — loops back',
     'D→D':   'dominant extension — tension held',
   })[`${fromFn}→${toFn}`] ?? null;
@@ -155,17 +155,27 @@ function _motionLabel(fromFn, toFn) {
 function _whyThisWorks(chord, prevChord, nextChord, key, cadences, idx) {
   const lines = [];
 
-  // 1. Cadence: does a cadence resolve ON this chord?
+  // 1. Cadence / motion: does a cadence-type move land ON this chord?
   const cad = (cadences || []).find(c => c.idx === idx);
   if (cad) {
-    const cadDesc = {
+    // True cadences (structural — end of progression or section boundary)
+    const trueDesc = {
       PAC: `${cad.chordA}→${cad.chordB} is an authentic cadence — the strongest resolution in tonal music. V moves to I with maximum pull.`,
       IAC: `${cad.chordA}→${cad.chordB} forms an imperfect authentic cadence — a softer resolution that still aims home.`,
-      HC:  `Ending on ${cad.chordB} creates a half cadence — the harmony stops on V, leaving tension deliberately unresolved.`,
+      HC:  `Ending on ${cad.chordB} creates a half cadence — the harmony pauses on V, leaving tension deliberately unresolved.`,
       PC:  `${cad.chordA}→${cad.chordB} is a plagal cadence — the warm "Amen" resolution from IV to I.`,
-      DC:  `${cad.chordA}→${cad.chordB} is a deceptive cadence — V avoids the expected I and lands on vi instead, creating surprise.`,
-    }[cad.typeKey];
-    if (cadDesc) lines.push(cadDesc);
+      DC:  `${cad.chordA}→${cad.chordB} is a deceptive cadence — V avoids the expected I and lands on vi instead, creating harmonic surprise.`,
+    };
+    // Non-true: same interval pattern but mid-loop — describe as motion, not cadence
+    const motionDesc = {
+      PAC: `${cad.chordA}→${cad.chordB} is dominant motion resolving home — strong V→I pull, but mid-loop so it keeps the energy cycling rather than closing.`,
+      IAC: `${cad.chordA}→${cad.chordB} is dominant motion to tonic — aims home but doesn't close the phrase structurally.`,
+      HC:  `Arriving on ${cad.chordB} creates unresolved dominant tension — the harmony hangs on V, building anticipation.`,
+      PC:  `${cad.chordA}→${cad.chordB} is plagal motion — IV moving to I with a warm, settled feel, but mid-progression rather than a closing gesture.`,
+      DC:  `${cad.chordA}→${cad.chordB} is deceptive motion — V sidesteps to vi instead of resolving to I, adding surprise and keeping forward momentum.`,
+    };
+    const desc = cad.isTrueCadence ? trueDesc[cad.typeKey] : motionDesc[cad.typeKey];
+    if (desc) lines.push(desc);
   }
 
   // 2. Secondary dominant resolution: prev was a V7/X pointing here
@@ -244,10 +254,10 @@ function _whatsMissingHtml(chords, key, cadences, sections) {
     insights.push({ text: 'No dominant chord (V) used — tonal direction is subtle; the strongest pull toward home is absent.', type: 'missing' });
   }
 
-  // No authentic cadence (V→I)
-  const hasAC = (cadences || []).some(c => c.typeKey === 'PAC' || c.typeKey === 'IAC');
+  // No authentic cadence (V→I) — only flag if there's no structural resolution
+  const hasAC = (cadences || []).some(c => (c.typeKey === 'PAC' || c.typeKey === 'IAC') && c.isTrueCadence);
   if (!hasAC) {
-    insights.push({ text: 'No authentic cadence (V→I) — the progression never fully resolves. Intentional in loop-based writing, but limits closure.', type: 'missing' });
+    insights.push({ text: 'No authentic cadence (V→I) — the progression moves in continuous harmonic motion without a structural close. Common in loop-based writing.', type: 'info' });
   }
 
   // Dominant not prepared by pre-dominant
@@ -470,10 +480,11 @@ function _doRenderTheory() {
     }
   }
 
-  // ── C. Cadences ───────────────────────────────────────────────────────────
-  if (cadences?.length && key) {
-    let cadHtml = '<strong>Cadences detected:</strong><ul class="cadence-list">';
-    for (const cad of cadences) {
+  // ── C. Cadences (true structural cadences only) ───────────────────────────
+  const trueCadences = (cadences || []).filter(c => c.isTrueCadence);
+  if (trueCadences.length && key) {
+    let cadHtml = '<strong>Cadences:</strong><ul class="cadence-list">';
+    for (const cad of trueCadences) {
       const label = cad.isSectionBoundary
         ? `${cad.chordB} ends the section on V`
         : `${cad.chordA} → ${cad.chordB}`;
@@ -689,21 +700,22 @@ export function renderProgressionStory(key, chords, cadences = [], patterns = []
     html.push(`<li>Function: <strong>${label}</strong></li>`);
     html.push(`<li>Feel: ${feelMap[label] ?? 'varied'}</li>`);
     {
-      const isLoop = label === 'Dominant preparation' || label.includes('loop');
-      if (secCads.length === 0) {
-        html.push(`<li>No strong cadence — <em>${isLoop ? 'continuous looping motion' : 'floating / continuous feel'}</em></li>`);
-      } else if (isLoop) {
-        html.push('<li>No true cadence — <em>continuous looping motion</em></li>');
+      const trueSec = secCads.filter(c => c.isTrueCadence);
+      if (trueSec.length === 0) {
+        html.push('<li>No cadence — <em>continuous harmonic motion (loop-based feel)</em></li>');
       } else {
-        for (const cad of secCads) {
-          const resChord = chords[cad.idx];
-          const atEnd = resChord === secChords[secChords.length - 1];
+        for (const cad of trueSec) {
           const chordA = cad.chordA?.name ?? String(cad.chordA ?? '?');
           const chordB = cad.chordB?.name ?? String(cad.chordB ?? '?');
-          const cadLabel = atEnd
-            ? `${cad.type.name} — ${chordA}→${chordB}`
-            : `Weak ${cad.type.abbr} motion — ${chordA}→${chordB} (mid-phrase)`;
-          html.push(`<li>${cadLabel}</li>`);
+          html.push(`<li>${cad.type.name} — ${chordA}→${chordB}</li>`);
+        }
+        // Also note any mid-phrase motion of the same type
+        const motionOnly = secCads.filter(c => !c.isTrueCadence);
+        for (const cad of motionOnly) {
+          const chordA = cad.chordA?.name ?? String(cad.chordA ?? '?');
+          const chordB = cad.chordB?.name ?? String(cad.chordB ?? '?');
+          const motionName = { PAC:'dominant', IAC:'dominant', PC:'plagal', DC:'deceptive', HC:'half' }[cad.typeKey] ?? '';
+          html.push(`<li>${chordA}→${chordB} — ${motionName} motion (mid-phrase)</li>`);
         }
       }
     }
@@ -714,22 +726,23 @@ export function renderProgressionStory(key, chords, cadences = [], patterns = []
   // ── Harmonic Characteristics ───────────────────────────────────────────
   html.push('<div class="story-h2">Harmonic Characteristics</div>');
 
-  // Cadences
+  // Cadences — only structural (true) cadences listed here
+  const storyCads = cadences.filter(c => c.isTrueCadence);
   html.push('<div class="story-h3">Cadences</div><ul class="story-list">');
-  if (cadences.length === 0) {
-    html.push('<li>No cadence detected</li>');
+  if (storyCads.length === 0) {
+    html.push('<li>No true cadence — progression moves in continuous harmonic motion</li>');
   } else {
-    if (!cadences.some(c => c.typeKey === 'PAC' || c.typeKey === 'IAC'))
-      html.push('<li>No strong authentic cadence (V–I)</li>');
-    if (cadences.some(c => c.typeKey === 'PAC'))
-      html.push('<li>Authentic cadence (V–I) — strong resolution</li>');
-    if (cadences.some(c => c.typeKey === 'PC'))
-      html.push('<li>Plagal motion (IV–I) — "Amen" cadence</li>');
-    if (cadences.some(c => c.typeKey === 'HC'))
-      html.push('<li>Half cadence — ends on V, feeling unresolved</li>');
-    if (cadences.some(c => c.typeKey === 'DC'))
-      html.push('<li>Deceptive cadence (V–vi) — harmonic surprise</li>');
-    if (!cadences.some(c => c.typeKey === 'PAC'))
+    if (!storyCads.some(c => c.typeKey === 'PAC' || c.typeKey === 'IAC'))
+      html.push('<li>No authentic cadence (V–I) — resolution is avoided or deferred</li>');
+    if (storyCads.some(c => c.typeKey === 'PAC'))
+      html.push('<li>Authentic cadence (V–I) — strongest structural resolution</li>');
+    if (storyCads.some(c => c.typeKey === 'PC'))
+      html.push('<li>Plagal cadence (IV–I) — warm "Amen" close</li>');
+    if (storyCads.some(c => c.typeKey === 'HC'))
+      html.push('<li>Half cadence — phrase ends on V, tension left open</li>');
+    if (storyCads.some(c => c.typeKey === 'DC'))
+      html.push('<li>Deceptive cadence (V–vi) — harmonic surprise, avoids expected close</li>');
+    if (!storyCads.some(c => c.typeKey === 'PAC'))
       html.push('<li>Resolution is delayed / avoided</li>');
   }
   html.push('</ul><hr class="story-rule">');

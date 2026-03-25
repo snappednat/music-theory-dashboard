@@ -167,11 +167,14 @@ export function renderChordDisplay(chord, selectedFrets, tuning, key, onVoicingS
 
   const displayName  = chord.slashName || chord.name;
   const qualityLabel = CHORD_QUALITY_LABELS[chord.quality] || chord.quality;
+  const inferredHint = chord.inferred5th
+    ? `<span class="chord-inferred-hint" title="3rd string muted — quality inferred from key context">(no 3rd)</span>`
+    : '';
 
   container.innerHTML = `
     <div class="chord-main">
       <span class="chord-name-large">${displayName}</span>
-      <span class="chord-quality-label">${qualityLabel}</span>
+      <span class="chord-quality-label">${qualityLabel}${inferredHint}</span>
     </div>
     <div class="chord-notes-row">${noteBadges}</div>
     ${theoryHtml}
