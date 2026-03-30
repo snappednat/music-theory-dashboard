@@ -50,7 +50,7 @@ export function parseTabString(tabStr) {
   const frets = parts.map(p => {
     if (p === 'x' || p === 'm') return -1;
     const n = parseInt(p, 10);
-    return (isNaN(n) || n < 0 || n > 22) ? null : n;
+    return (isNaN(n) || n < 0 || n > 24) ? null : n;
   });
   return frets.includes(null) ? null : frets;
 }
@@ -64,7 +64,7 @@ export function parseTabString(tabStr) {
  * @param {function}    onVoicingSelect    - (frets) => void — apply voicing to fretboard
  * @param {function}    onAddToProgression - () => void — add current chord to progression
  */
-export function renderChordDisplay(chord, selectedFrets, tuning, key, onVoicingSelect, onAddToProgression, progressionFrets = null) {
+export function renderChordDisplay(chord, selectedFrets, tuning, key, onVoicingSelect, onAddToProgression, progressionFrets = null, explorerOpen = false, isReplaceMode = false, onReplace = null) {
   const container = document.getElementById('chord-display');
   if (!container) return;
 
@@ -147,19 +147,21 @@ export function renderChordDisplay(chord, selectedFrets, tuning, key, onVoicingS
       </div>`;
   }).join('');
 
-  const voicingsHtml = voicings.length > 0 ? `
+  // Replace button — only shown inside voicings dropdown when loaded from progression
+  const replaceBtnHtml = isReplaceMode ? `
+    <button id="btn-replace-chord" class="btn-action-img btn-replace-img" title="Replace in Progression">
+      <img src="assets/icon-replace-in-progression.png" alt="Replace in Progression" class="btn-action-img-src">
+    </button>` : '';
+
+  // Hide the built-in voicings dropdown when the richer voicing explorer panel is open
+  const voicingsHtml = (!explorerOpen && voicings.length > 0) ? `
     <details class="chord-voicings-details">
       <summary class="chord-voicings-summary">
         Voicings <span class="chord-voicings-count">(${voicings.length})</span>
       </summary>
       <div class="chord-voicings-row" id="current-chord-voicings">${voicingCards}</div>
-      <div class="chord-action-row">
-        <button class="btn-add-inline" id="btn-add-inline" title="Add to progression">+ Add to Progression</button>
-      </div>
-    </details>` : `
-    <div class="chord-action-row">
-      <button class="btn-add-inline" id="btn-add-inline" title="Add to progression">+ Add to Progression</button>
-    </div>`;
+      ${replaceBtnHtml}
+    </details>` : ``;
 
   // ── Render ────────────────────────────────────────────────────────────────
   // Preserve the open/closed state of the voicings <details> across re-renders
@@ -173,12 +175,16 @@ export function renderChordDisplay(chord, selectedFrets, tuning, key, onVoicingS
 
   container.innerHTML = `
     <div class="chord-main">
-      <span class="chord-name-large">${displayName}</span>
-      <span class="chord-quality-label">${qualityLabel}${inferredHint}</span>
+      <div class="chord-main-info">
+        <span class="chord-name-large">${displayName}</span>
+        <span class="chord-quality-label">${qualityLabel}${inferredHint}</span>
+      </div>
+      ${chordScaleHtml}
     </div>
-    <div class="chord-notes-row">${noteBadges}</div>
-    ${theoryHtml}
-    ${chordScaleHtml}
+    <div class="chord-notes-theory-row">
+      <div class="chord-notes-row">${noteBadges}</div>
+      ${theoryHtml}
+    </div>
     ${voicingsHtml}
   `;
 
@@ -187,11 +193,6 @@ export function renderChordDisplay(chord, selectedFrets, tuning, key, onVoicingS
     const details = container.querySelector('.chord-voicings-details');
     if (details) details.open = true;
   }
-
-  // ── "Add to Progression" button ───────────────────────────────────────────
-  container.querySelector('#btn-add-inline')?.addEventListener('click', () => {
-    onAddToProgression?.();
-  });
 
   // ── Voicing card interactions ─────────────────────────────────────────────
   const voicingsRow = container.querySelector('#current-chord-voicings');
@@ -211,6 +212,12 @@ export function renderChordDisplay(chord, selectedFrets, tuning, key, onVoicingS
       playChord(frets, tuning);
       onVoicingSelect(frets);
     });
+  }
+
+  // ── Replace-in-progression button ────────────────────────────────────────
+  const replaceBtn = container.querySelector('#btn-replace-chord');
+  if (replaceBtn && onReplace) {
+    replaceBtn.addEventListener('click', () => onReplace());
   }
 
   // ── Chord-scale chip clicks ──────────────────────────────────────────────

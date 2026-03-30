@@ -3,23 +3,91 @@
   width: 100%;
 }
 
+/* ─── Fretboard Header Row ──────────────────────────── */
+/* Chord name centred; Tone/Tuning/Capo moved to icon bar below fretboard */
+.fb-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 14px 2px;
+  min-height: 48px;
+}
+
+/* Each icon + its popover share a positioned wrapper */
+.fb-icon-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* Icon button — fixed square so the circle outline never distorts */
+.fb-icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 50%;        /* always circular — prevents oval on first open */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  opacity: 0.82;
+  transition: opacity 0.15s, transform 0.12s;
+}
+.fb-icon-btn img { display: block; border-radius: 50%; }
+.fb-icon-btn:hover { opacity: 1; transform: scale(1.08); }
+.fb-icon-btn.open  { opacity: 1; outline: 2px solid var(--accent-gold); outline-offset: 3px; }
+
+/* Floating popover panel — fixed so it escapes overflow:hidden ancestors */
+.fb-popover {
+  position: fixed;
+  z-index: 9999;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  box-shadow: 0 10px 32px rgba(0,0,0,0.6);
+  min-width: 300px;
+}
+#tuning-popover { max-width: 590px; }  /* stays within the 640px left panel */
+
+/* Label text next to Tuning / Tone icons */
+.fb-icon-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #7090c0;
+  white-space: nowrap;
+}
+
 /* ─── Live Chord Name Label ─────────────────────────── */
+/* Absolutely centred over the full header row width */
 .fb-chord-label {
   text-align: center;
   font-size: 1.6rem;
   font-weight: 800;
   color: var(--accent-blue);
   letter-spacing: 0.02em;
-  padding: 6px 0 2px;
+  padding: 4px 8px;
   line-height: 1;
+}
+
+/* Shape annotation "(Shape: E)" — smaller, muted, same style as icon bar labels */
+.fb-chord-shape-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  vertical-align: middle;
+  margin-left: 4px;
 }
 
 #fretboard-container {
   width: 100%;
   background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-bottom: none;
-  border-radius: var(--radius) var(--radius) 0 0;
   overflow-x: auto;
   padding: 8px 0 4px;
 }
@@ -165,5 +233,12 @@
   fill: none;
   stroke: var(--text-secondary);
   stroke-width: 2;
+  pointer-events: none;
+}
+
+/* Capo bar — purple vertical band rendered above strings at the capo fret */
+.fb-capo-bar {
+  fill: #9333ea;
+  opacity: 0.88;
   pointer-events: none;
 }

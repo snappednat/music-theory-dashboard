@@ -1,3 +1,127 @@
+/* ─── Panel Section Divider ─────────────────────────── */
+.panel-section-divider {
+  border: none;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  margin: 10px 0 8px;
+}
+
+/* ─── Fretboard Section — full-bleed SVG inside a panel ── */
+.fretboard-section.panel {
+  padding: 0;
+  overflow: hidden;
+}
+.fretboard-section .panel-section-divider {
+  margin: 0 16px 6px;
+}
+.fretboard-section .panel-collapse-header {
+  padding: 6px 16px 8px;
+}
+.fretboard-section .panel-collapsible-body {
+  padding: 0 16px 12px;
+}
+
+/* ─── Next Ideas Wrapper ─────────────────────────────── */
+.next-ideas-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ─── Templates Popover ──────────────────────────────── */
+.templates-popover {
+  position: fixed;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 900;
+  width: min(420px, 90vw);
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+  animation: glossaryFadeIn 0.18s ease;
+}
+.templates-import-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px 6px;
+}
+.templates-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0 0 6px;
+}
+.templates-popover-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.template-option-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  width: 100%;
+  padding: 9px 12px;
+  background: var(--bg-control);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s, border-color 0.15s;
+}
+.template-option-btn:hover {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: #fff;
+}
+.template-option-btn small {
+  font-size: 0.72rem;
+  font-weight: 400;
+  opacity: 0.7;
+}
+
+/* ─── Instructions Popover ───────────────────────────── */
+.instructions-popover {
+  position: fixed;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 900;
+  width: min(520px, 90vw);
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+  animation: glossaryFadeIn 0.18s ease;
+}
+.instructions-popover-inner { padding: 14px 16px; }
+.instructions-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.instructions-body { display: flex; flex-direction: column; gap: 8px; }
+.instructions-list {
+  padding-left: 1.4em;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.instructions-list li {
+  font-size: var(--font-size-body);
+  color: var(--text-secondary);
+  line-height: var(--line-height-body);
+}
+.instructions-list li strong { color: var(--text-primary); }
+
 /* ─── Tuning Section ────────────────────────────────── */
 .tuning-section { padding: 10px 16px; }
 .tuning-header {
@@ -31,32 +155,40 @@
   font-weight: 600;
 }
 
+.tuning-tone-row {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 0 2px;
+}
+
 .tuning-strings {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: flex-end;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;         /* single row — all 6 strings + Apply visible at once */
 }
 .string-tuning {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 3px;
+  flex-shrink: 0;
 }
 .string-tuning-label {
-  font-size: 0.68rem;
+  font-size: 0.63rem;
   color: var(--text-hint);
   text-align: center;
+  white-space: nowrap;
 }
 .string-tuning-select {
   background: var(--bg-control);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   color: var(--text-primary);
-  font-size: 0.8rem;
-  padding: 4px 6px;
+  font-size: 0.78rem;
+  padding: 4px 2px;
   cursor: pointer;
-  width: 80px;
+  width: 52px;               /* narrowed from 80px so 6 fit in one row */
   text-align: center;
 }
 .string-tuning-select:focus { outline: none; border-color: var(--accent-teal); }
@@ -85,8 +217,8 @@
 
 /* ─── Key Panel ─────────────────────────────────────── */
 .key-panel.panel {
-  border-top: 2px solid var(--accent-gold);
-  background: radial-gradient(ellipse at top left, rgba(240,160,32,0.08) 0%, transparent 60%), var(--bg-panel);
+  border-top: 2px solid var(--brand-gold);
+  background: radial-gradient(ellipse at top left, rgba(250,163,17,0.08) 0%, transparent 60%), var(--bg-panel);
 }
 
 #key-display {
@@ -94,6 +226,26 @@
   flex-direction: column;
   gap: 8px;
 }
+/* ─── Key Panel Collapsed Header Summary ─────────────── */
+.key-header-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 6px;
+}
+.key-header-name {
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--accent-gold);
+  letter-spacing: -0.01em;
+}
+.key-header-pct {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-hint);
+}
+
 .key-summary-row {
   display: flex;
   align-items: center;
@@ -289,8 +441,15 @@
 }
 .chord-main {
   display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.chord-main-info {
+  display: flex;
   align-items: baseline;
   gap: 10px;
+  flex-shrink: 0;
 }
 .chord-name-large {
   font-family: var(--font-mono);
@@ -362,6 +521,24 @@
   line-height: 1.6;
 }
 
+/* ── Notes + theory inline row ──────────────────────────────────────────── */
+.chord-notes-theory-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.chord-notes-theory-row .chord-notes-row {
+  flex-shrink: 0;
+  margin-top: 0;
+}
+.chord-notes-theory-row .chord-theory-fact {
+  flex: 1;
+  min-width: 180px;
+  margin-top: 0;
+}
+
 /* ── Theory fact row ─────────────────────────────────────────────────────── */
 .chord-theory-fact {
   display: flex;
@@ -387,6 +564,20 @@
 }
 
 /* ─── Chord-Scale Recommendations ────────────────────── */
+.chord-main .chord-scales-section {
+  margin-top: 2px;
+  padding: 0;
+  text-align: right;
+}
+.chord-main .chord-scales-label {
+  font-size: 0.62rem;
+  color: var(--text-hint);
+  margin-bottom: 3px;
+  font-weight: 600;
+}
+.chord-main .chord-scales-list {
+  justify-content: flex-end;
+}
 .chord-scales-section {
   margin-top: 6px;
   padding: 6px 0;
@@ -511,10 +702,10 @@
   font-weight: 600;
   margin-top: 2px;
 }
-.chord-degree-tonic     { background: rgba(39,174,96,0.2);  color: var(--fn-tonic);       border: 1px solid var(--fn-tonic); }
-.chord-degree-dominant  { background: rgba(231,76,60,0.2);  color: var(--fn-dominant);    border: 1px solid var(--fn-dominant); }
-.chord-degree-subdominant { background: rgba(52,152,219,0.2); color: var(--fn-subdominant); border: 1px solid var(--fn-subdominant); }
-.chord-degree-other     { background: rgba(155,89,182,0.2); color: var(--fn-other);       border: 1px solid var(--fn-other); }
+.chord-degree-tonic     { background: rgba(98,234,242,0.12); color: var(--fn-tonic);       border: 1px solid var(--fn-tonic); }
+.chord-degree-dominant  { background: rgba(234,24,94,0.12);  color: var(--fn-dominant);    border: 1px solid var(--fn-dominant); }
+.chord-degree-subdominant { background: rgba(7,157,242,0.12);  color: var(--fn-subdominant); border: 1px solid var(--fn-subdominant); }
+.chord-degree-other     { background: rgba(4,98,222,0.12);  color: var(--fn-other);       border: 1px solid var(--fn-other); }
 
 /* ─── Chord Suggestions ─────────────────────────────── */
 .suggestions-grid {
@@ -552,19 +743,19 @@
 }
 
 .suggestion-card:hover {
-  border-color: var(--accent-purple);
-  background: rgba(181, 123, 238, 0.12);
+  border-color: var(--blue-sky);
+  background: rgba(7,157,242,0.1);
   transform: translateY(-2px);
-  box-shadow: 0 4px 18px rgba(181, 123, 238, 0.2);
+  box-shadow: 0 4px 18px rgba(7,157,242,0.15);
 }
 .suggestion-card.fn-tonic {
-  border-color: rgba(39,174,96,0.4);
+  border-color: rgba(98,234,242,0.4);
 }
 .suggestion-card.fn-dominant {
-  border-color: rgba(231,76,60,0.4);
+  border-color: rgba(234,24,94,0.4);
 }
 .suggestion-card.fn-subdominant {
-  border-color: rgba(52,152,219,0.4);
+  border-color: rgba(7,157,242,0.4);
 }
 .suggestion-numeral {
   font-size: 0.7rem;
@@ -597,7 +788,7 @@
   transition: transform 0.08s;
 }
 .suggestion-card:focus-visible {
-  outline: 2px solid var(--accent-purple);
+  outline: 2px solid var(--blue-sky);
   outline-offset: 2px;
 }
 
@@ -676,7 +867,7 @@
   padding: 5px 10px; cursor: pointer; border-radius: 4px;
   background: rgba(255,255,255,0.04);
   font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em;
-  text-transform: uppercase; color: #a78bfa;
+  text-transform: uppercase; color: var(--blue-sky);
   user-select: none; margin-bottom: 2px;
 }
 .theory-section-header:hover { background: rgba(255,255,255,0.08); }
@@ -700,6 +891,29 @@
 }
 .theory-chord-name   { font-weight: 600; font-size: 0.88rem; color: #f1f5f9; }
 .theory-chord-quality { font-size: 0.7rem; color: #6b7280; }
+
+.theory-inversion-hint {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 3px 0 5px;
+  padding: 3px 8px;
+  background: rgba(245,158,11,0.08);
+  border-left: 2px solid rgba(245,158,11,0.5);
+  border-radius: 0 4px 4px 0;
+  font-size: 0.7rem;
+}
+.theory-inv-badge {
+  font-weight: 700;
+  color: #f59e0b;
+  white-space: nowrap;
+  font-size: 0.68rem;
+  letter-spacing: 0.03em;
+}
+.theory-inv-desc {
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+}
 
 .theory-chord-identity {
   font-size: 0.76rem; color: #94a3b8; font-style: italic;
@@ -796,22 +1010,29 @@
 .alt-voicings-header { margin-bottom: 4px; }
 #alt-voicings-panel .ve-cards { margin-top: 0; }
 
+/* ─── Next Chord Ideas header row (title + difficulty toggle + chevron) ── */
+.ideas-panel-header-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ideas-panel-header-row .panel-title-row {
+  flex: 1;
+}
+
 /* ─── Player Level / Difficulty Bar ───────────────────── */
 .difficulty-bar {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 6px 10px;
-  background: rgba(255,255,255,0.03);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-  margin-bottom: 6px;
+  gap: 8px;
+  flex-shrink: 0;
 }
 .difficulty-bar-label {
-  font-size: 0.68rem;
+  font-size: var(--font-size-section-label);
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: #64748b;
+  font-variant: small-caps;
+  letter-spacing: 0.06em;
+  color: #7090c0;
   white-space: nowrap;
 }
 .difficulty-toggle-group {
@@ -825,14 +1046,17 @@
   border-radius: 12px;
   border: 1px solid rgba(255,255,255,0.12);
   background: transparent;
-  color: #64748b;
+  color: var(--text-muted);
   cursor: pointer;
   transition: all 0.15s;
 }
-.difficulty-btn:hover { border-color: #94a3b8; color: #94a3b8; }
-.difficulty-btn.active[data-level="beginner"]     { background: #22c55e22; border-color: #22c55e; color: #4ade80; }
-.difficulty-btn.active[data-level="intermediate"] { background: #f59e0b22; border-color: #f59e0b; color: #fbbf24; }
-.difficulty-btn.active[data-level="advanced"]     { background: #6366f122; border-color: #6366f1; color: #a5b4fc; }
+.difficulty-btn:hover { border-color: var(--text-secondary); color: var(--text-secondary); }
+.difficulty-btn.active[data-level="basic"]        { background: rgba(98,234,242,0.1);  border-color: var(--aqua);       color: var(--aqua); }
+.difficulty-btn.active[data-level="color"]        { background: rgba(250,163,17,0.1);  border-color: var(--brand-gold);  color: var(--brand-gold); }
+.difficulty-btn.active[data-level="advanced"]     { background: rgba(7,157,242,0.12);  border-color: var(--blue-sky);   color: var(--blue-sky); }
+/* keep old level names for backward compat */
+.difficulty-btn.active[data-level="beginner"]     { background: rgba(98,234,242,0.1);  border-color: var(--aqua);       color: var(--aqua); }
+.difficulty-btn.active[data-level="intermediate"] { background: rgba(250,163,17,0.1);  border-color: var(--brand-gold);  color: var(--brand-gold); }
 .ve-fallback-note {
   font-size: 0.68rem;
   color: #94a3b8;
@@ -932,8 +1156,8 @@
   transition: all 0.15s;
 }
 .ve-card:hover {
-  border-color: var(--accent-purple);
-  background: rgba(155, 89, 182, 0.12);
+  border-color: var(--blue-sky);
+  background: rgba(7,157,242,0.1);
 }
 .ve-card.ve-active {
   border-color: var(--accent-teal);
@@ -967,9 +1191,47 @@
   margin-top: -1px;
 }
 
+/* ─── Chord Tone Interval Pills ─────────────────────── */
+.ve-chord-tones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px 2px;
+  font-size: 0.65rem;
+  color: var(--text-hint);
+}
+.ve-tone-pill {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 5px;
+  padding: 2px 5px;
+  line-height: 1.2;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.ve-tone-pill.ve-tone-root {
+  border-color: rgba(98,234,242,0.5);
+  color: var(--aqua);
+}
+.ve-tone-interval {
+  font-size: 0.55rem;
+  font-weight: 400;
+  opacity: 0.75;
+  letter-spacing: 0.04em;
+}
+.ve-tone-sep {
+  color: var(--text-hint);
+  opacity: 0.4;
+  font-size: 0.6rem;
+}
+
 /* ─── Scale Suggestions Panel ───────────────────────── */
 #scale-suggestions-panel {
-  padding: 12px 16px;
+  padding: 12px 0;
 }
 
 .ssc-cards {
@@ -977,6 +1239,7 @@
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 8px;
+  padding: 0 16px;
 }
 
 .ssc-card {
@@ -1168,6 +1431,12 @@
   font-weight: 700;
   color: var(--text-primary);
   white-space: nowrap;
+}
+.transition-count {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--accent-teal);
+  opacity: 0.85;
 }
 .transition-arrow {
   color: var(--text-hint);
@@ -1536,8 +1805,8 @@
   transition: all 0.15s;
 }
 .idea-voicing-card:hover {
-  border-color: var(--accent-purple);
-  background: rgba(155, 89, 182, 0.12);
+  border-color: var(--blue-sky);
+  background: rgba(7,157,242,0.1);
 }
 .idea-voicing-selected {
   border-color: var(--accent-teal) !important;
@@ -1817,12 +2086,37 @@
 .ideas-doesnt-fit-cards .idea-card:hover { opacity: 0.8; }
 
 /* ─── Intent group section header colors ────────────── */
-.ideas-top-picks  { color: #f59e0b; }
-.intent-resolve   { color: #4ade80; }
-.intent-tension   { color: #f87171; }
-.intent-floating  { color: #60a5fa; }
-.intent-color     { color: #a78bfa; }
-.intent-redirect  { color: #2dd4bf; }
+.ideas-top-picks  { color: var(--brand-gold); }
+.intent-resolve   { color: var(--aqua); }
+.intent-tension   { color: var(--brand-pink); }
+.intent-floating  { color: var(--blue-sky); }
+.intent-color     { color: var(--blue-bright); }
+.intent-redirect  { color: var(--aqua); }
+.intent-slash      { color: var(--brand-gold); cursor: pointer; }
+.intent-chromatic  { color: #f87171; cursor: pointer; }   /* red — clearly "outside" the key */
+
+/* Inversion tag badge inside chord ideas */
+.idea-inv-tag {
+  font-size: 0.55rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #f59e0b;
+  background: rgba(245,158,11,0.12);
+  border: 1px solid rgba(245,158,11,0.3);
+  border-radius: 4px;
+  padding: 1px 4px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+/* Slash section blurb */
+.idea-slash-blurb {
+  font-size: 0.68rem;
+  color: var(--text-hint);
+  font-style: italic;
+  padding: 3px 0 5px;
+}
 
 /* ─── Card outcome + theory labels ──────────────────── */
 .idea-chord-top {
@@ -1867,19 +2161,19 @@
   letter-spacing: 0.02em;
 }
 .idea-numeral-tonic {
-  background: rgba(39,174,96,0.2);
-  color: #4ade80;
-  border: 1px solid rgba(39,174,96,0.4);
+  background: rgba(98,234,242,0.12);
+  color: var(--aqua);
+  border: 1px solid rgba(98,234,242,0.35);
 }
 .idea-numeral-dominant {
-  background: rgba(231,76,60,0.2);
-  color: #f87171;
-  border: 1px solid rgba(231,76,60,0.4);
+  background: rgba(234,24,94,0.12);
+  color: var(--brand-pink);
+  border: 1px solid rgba(234,24,94,0.35);
 }
 .idea-numeral-subdominant {
-  background: rgba(52,152,219,0.2);
-  color: #60a5fa;
-  border: 1px solid rgba(52,152,219,0.4);
+  background: rgba(7,157,242,0.12);
+  color: var(--blue-sky);
+  border: 1px solid rgba(7,157,242,0.35);
 }
 .idea-numeral-other {
   background: rgba(255,255,255,0.06);
@@ -1937,6 +2231,7 @@
   font-size: .72rem;
   padding: 2px 10px;
   border-radius: 99px;
+  margin-left: 6px;
 }
 .btn-stop {
   border-color: var(--accent-red, #e74c3c);
@@ -2058,7 +2353,12 @@
 .story-arc-resolved  { background: rgba(59,130,246,0.15);  color: #60a5fa; }
 .story-arc-suspended { background: rgba(239,68,68,0.15);   color: #f87171; }
 .story-arc-mixed     { background: rgba(100,116,139,0.15); color: #94a3b8; }
-.story-arc-building  { background: rgba(251,146,60,0.15);  color: #fb923c; }  /* orange — building tension */
+.story-arc-building      { background: rgba(251,146,60,0.15);  color: #fb923c; }  /* orange — building tension */
+.story-arc-introspective { background: rgba(99,102,241,0.15);  color: #818cf8; }  /* indigo — inward, thoughtful */
+.story-arc-dark          { background: rgba(124,58,237,0.15);  color: #c084fc; }  /* deep purple — brooding */
+.story-arc-triumphant    { background: rgba(234,179,8,0.15);   color: #facc15; }  /* gold — major victory/resolution */
+.story-arc-cathartic     { background: rgba(20,184,166,0.15);  color: #2dd4bf; }  /* teal — emotional release */
+.story-arc-bittersweet   { background: rgba(236,72,153,0.15);  color: #f472b6; }  /* pink — mixed joy/sadness */
 
 /* ─── Ctrl+click selected chip ──────────────────────────────────────────── */
 .chord-chip.chip-ctrl-selected {
@@ -2087,20 +2387,10 @@
   to   { box-shadow: 0 0 0 5px rgba(74,222,128,0.0); }
 }
 
+/* Replace button lives inside the voicings dropdown */
 #btn-replace-chord {
+  display: block;
   margin-top: 10px;
-  width: 100%;
-  background: linear-gradient(135deg, #92400e, #b45309);
-  border: 1px solid #f59e0b;
-  color: #fef3c7;
-  font-size: 0.8rem;
-  padding: 7px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-#btn-replace-chord:hover {
-  background: linear-gradient(135deg, #b45309, #d97706);
 }
 
 /* ─── Relationship Analyzer Panel ───────────────────────────────────────── */
@@ -2200,6 +2490,12 @@
   flex-wrap: wrap;
 }
 .ra-trans-pair { font-weight: 600; color: var(--text-primary); }
+.ra-trans-count {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--accent-teal);
+  opacity: 0.85;
+}
 .ra-trans-motion { color: var(--text-secondary); }
 .ra-trans-common { color: var(--accent-teal); font-style: italic; }
 .ra-trans-fn {

@@ -3,20 +3,20 @@
  * Strings: index 0 = low E (bottom of SVG), index 5 = high e (top of SVG)
  */
 
-const FRET_COUNT = 22;
-const SVG_WIDTH  = 920;
+const FRET_COUNT = 24;
+const SVG_WIDTH  = 1000;
 const SVG_HEIGHT = 220;
 
 // Layout constants
 const NUT_X        = 60;   // x position of the nut
-const BOARD_END_X  = 890;  // x of the last fret
+const BOARD_END_X  = 965;  // x of the last fret
 const TOP_Y        = 30;   // y of string 5 (high e, top)
 const BOT_Y        = 180;  // y of string 0 (low E, bottom)
 const STRING_GAP   = (BOT_Y - TOP_Y) / 5;  // = 30
 
 // Fret position markers (dots at these fret numbers)
 const INLAY_FRETS  = [3, 5, 7, 9, 15, 17, 19, 21];
-const DOUBLE_INLAY = [12];
+const DOUBLE_INLAY = [12, 24];
 
 // Guitar scale length used for fret spacing (normalised to our display width)
 const SCALE_LENGTH = BOARD_END_X - NUT_X;
@@ -129,7 +129,7 @@ function _buildFretboard(svg) {
   }
 
   // Fret number labels at inlay positions
-  for (const f of [5, 7, 9, 12]) {
+  for (const f of [5, 7, 9, 12, 16, 19]) {
     const x = fretCentreX(f);
     svg.appendChild(_el('text', { class: 'fb-fret-label', x, y: BOT_Y + 16 }, `${f}`));
   }
@@ -189,12 +189,24 @@ function _handleHover(e) {
  * @param {number[]} suggestionFrets    - ghost dots for chord suggestion
  * @param {{startFret,endFret}|null} activePosition - when set, restrict scale to this window
  */
-export function render(selectedFrets, tuning, scalePitches, tonicPitch, suggestionFrets, activePosition) {
+export function render(selectedFrets, tuning, scalePitches, tonicPitch, suggestionFrets, activePosition, capoFret = 0) {
   _tuning = tuning;
   _noteLayer.innerHTML = '';
 
   // Render string labels (left side) dynamically
   _renderStringLabels(tuning);
+
+  // Capo bar — purple vertical band spanning all strings at the capo fret
+  if (capoFret > 0) {
+    const cx = fretCentreX(capoFret);
+    _noteLayer.appendChild(_el('rect', {
+      class: 'fb-capo-bar',
+      x: cx - 6, y: TOP_Y - 10,
+      width: 12,
+      height: BOT_Y - TOP_Y + 20,
+      rx: 4,
+    }));
+  }
 
   // Dim overlay outside the active position window
   if (scalePitches && scalePitches.length && activePosition) {

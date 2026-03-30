@@ -17,16 +17,17 @@ import { renderVoicingExplorer, renderAltVoicings } from './ui/voicingExplorer.j
 import { renderChordIdeas }       from './ui/chordIdeas.js';
 import { renderFunctionFlowchart } from './ui/functionFlowchart.js';
 import { openGlossaryModal, renderGlossaryModal } from './ui/glossaryModal.js';
+import { openExportModal } from './ui/pdfExport.js';
 
 import { fretboardToPitches, identifyChord, CHORD_SUFFIXES, generateVoicings, parseChordName } from './core/chords.js';
 import { playChord, playProgression, stopPlayback } from './core/audio.js';
-import { detectKey, buildKey, getChordNumeral, detectModulations, countProgressionAccidentals } from './core/keys.js';
+import { detectKey, buildKey, getChordNumeral, detectModulations, countProgressionAccidentals, FIFTHS_ORDER } from './core/keys.js';
 import { detectCadences } from './core/cadences.js';
 import { detectPatterns, NAMED_PROGRESSIONS } from './core/progressions.js';
 import { SONG_FORMS, instantiateForm } from './core/forms.js';
 import { generateScale, SCALE_DISPLAY_NAMES, SCALE_GROUPS } from './core/scales.js';
 import { parseTabString }                    from './ui/tabDisplay.js';
-import { CHROMATIC_SHARP, pitchToNoteInKey }  from './core/notes.js';
+import { CHROMATIC_SHARP, CHROMATIC_FLAT, pitchToNoteInKey }  from './core/notes.js';
 
 // ─── Application State ────────────────────────────────
 const AppState = {
@@ -51,11 +52,16 @@ const AppState = {
   suggestionFrets: null,     // ghost voicing from suggestion click
   activePosition:  null,     // { startFret, endFret } for scale position box
   explorerChord:   null,     // chord shown in voicing explorer
+  capoFret:        0,        // 0 = no capo, 1-20 = capo fret position
   previewChord:         null,   // chord being hovered/previewed on circle
   previewLocked:        false,  // true once user has clicked (locks preview in place)
   isPlayingProgression: false,  // true while progression sequence is playing
   difficultyFilter:     'advanced', // 'basic' | 'color' | 'advanced'
 };
+
+// ─── Pending capo state ─────────────────────────────────
+// Tracks the capo position staged in the popover before Apply is clicked.
+let _pendingCapoFret = 1;
 
 // ─── Drag-to-reorder state ──────────────────────────────
 let _dragSrcIdx    = null;  // flat AppState.progression index of the chip being dragged
@@ -79,7 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
   TuningUI.init(onTuningChange, AppState.tuning);
 
   // Init circle of fifths
-  CircleOfFifths.init('circle-of-fifths-container', onCircleKeyClick);
+  CircleOfFifths.init('circle-of-fifths-container', onCircleKeyClick, onCircleChordLoad);
 
   // Scale type buttons
   _buildScaleTypeButtons();
@@ -91,10 +97,148 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('btn-shift-down')?.addEventListener('click', () => _shiftChordShape(-1));
   document.getElementById('btn-shift-up')?.addEventListener('click',   () => _shiftChordShape(+1));
+
+  // ── Capo controls ──────────────────────────────────────────────────────────
+  // ↓/↑ only move the pending position and preview the bar — no analysis until Apply
+  document.getElementById('btn-capo-down')?.addEventListener('click', () => {
+    if (_pendingCapoFret > 1) { _pendingCapoFret--; _updateCapoUI(); _renderFretboard(); }
+  });
+  document.getElementById('btn-capo-up')?.addEventListener('click', () => {
+    if (_pendingCapoFret < 20) { _pendingCapoFret++; _updateCapoUI(); _renderFretboard(); }
+  });
+  // Apply: commit pending capo, shift fretted notes above the new capo fret, full re-render
+  document.getElementById('btn-capo-apply')?.addEventListener('click', () => {
+    const newCapo = _pendingCapoFret;
+    const oldCapo = AppState.capoFret;
+    const delta   = newCapo - oldCapo;
+    AppState.capoFret = newCapo;
+    if (delta !== 0) {
+      AppState.selectedFrets = AppState.selectedFrets.map(f => {
+        if (f === -1 || f === 0) return f;
+        return Math.max(newCapo, f + delta);
+      });
+    }
+    _updateCapoUI();
+    _analyzeAndRender();
+  });
+  // Remove Capo: re-voice the sounding chord to the closest open-position voicing, then clear capo
+  document.getElementById('btn-remove-capo')?.addEventListener('click', () => {
+    const chord = AppState.currentChord;
+    if (chord?.root != null && chord?.quality) {
+      const voicings = generateVoicings(chord.root, chord.quality, AppState.tuning);
+      if (voicings.length) {
+        const best = _closestVoicing(voicings, AppState.selectedFrets);
+        AppState.selectedFrets = best.frets.slice();
+      }
+    }
+    AppState.capoFret = 0;
+    _pendingCapoFret  = 1;
+    _updateCapoUI();
+    const capoPop = document.getElementById('capo-popover');
+    if (capoPop) capoPop.hidden = true;
+    _analyzeAndRender();
+  });
+  // Seed _pendingCapoFret from current state when popover opens
+  document.getElementById('capo-icon-btn')?.addEventListener('click', () => {
+    _pendingCapoFret = AppState.capoFret > 0 ? AppState.capoFret : 1;
+    _updateCapoUI();
+  }, true); // capture phase so it runs before tuning.js stopPropagation
+
+  // When the capo popover closes without Apply, clear the preview bar from the fretboard.
+  // A MutationObserver catches all close paths: icon re-click, outside click, Escape key.
+  const _capoPopover = document.getElementById('capo-popover');
+  if (_capoPopover) {
+    new MutationObserver(() => {
+      if (_capoPopover.hidden) {
+        // Discard any staged position that was never applied
+        _pendingCapoFret = AppState.capoFret > 0 ? AppState.capoFret : 1;
+        _renderFretboard(); // clears the preview bar; uses AppState.capoFret (not pending)
+      }
+    }).observe(_capoPopover, { attributeFilter: ['hidden'] });
+  }
   document.getElementById('btn-glossary')?.addEventListener('click', () => openGlossaryModal(AppState));
+
+  // ── Instructions popover ───────────────────────────────────────────────────
+  const _instrPopover = document.getElementById('instructions-popover');
+  document.getElementById('btn-instructions')?.addEventListener('click', () => {
+    if (_instrPopover) _instrPopover.style.display = _instrPopover.style.display === 'none' ? 'block' : 'none';
+  });
+  document.getElementById('btn-instructions-close')?.addEventListener('click', () => {
+    if (_instrPopover) _instrPopover.style.display = 'none';
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && _instrPopover?.style.display !== 'none') _instrPopover.style.display = 'none';
+  });
+  // Close popover on outside click
+  document.addEventListener('click', e => {
+    if (_instrPopover?.style.display !== 'none' &&
+        !_instrPopover.contains(e.target) &&
+        !document.getElementById('btn-instructions')?.contains(e.target)) {
+      _instrPopover.style.display = 'none';
+    }
+  });
+
+  // ── Templates popover ─────────────────────────────────────────────────────
+  const _templatesPopover = document.getElementById('templates-popover');
+  const _templatesList    = document.getElementById('templates-popover-list');
+
+  // Populate template list once
+  if (_templatesList) {
+    for (const form of SONG_FORMS) {
+      const btn = document.createElement('button');
+      btn.className = 'template-option-btn';
+      btn.dataset.formKey = form.key;
+      btn.innerHTML = `${form.name}<small>${form.genre}</small>`;
+      btn.addEventListener('click', () => {
+        const keyRoot    = AppState.activeKey?.root    ?? 0;
+        const keyQuality = AppState.activeKey?.quality ?? 'major';
+        const templateSections = instantiateForm(form.key, keyRoot, keyQuality);
+        AppState.progression = [];
+        AppState.selectedProgressionIdx = null;
+        AppState.sections = [];
+        AppState.sectionCounts = {};
+        const typeToId = new Map();
+        for (const sec of templateSections) {
+          if (!typeToId.has(sec.section)) {
+            const type = sec.section;
+            AppState.sectionCounts[type] = (AppState.sectionCounts[type] ?? 0) + 1;
+            const n  = AppState.sectionCounts[type];
+            const id = `${type}-${n}`;
+            AppState.sections.push({ id, type, label: `${type[0].toUpperCase() + type.slice(1)} ${n}` });
+            typeToId.set(type, id);
+          }
+          const sectionId = typeToId.get(sec.section);
+          for (const chord of sec.chords) {
+            AppState.progression.push({ ...chord, frets: [-1,-1,-1,-1,-1,-1], section: sectionId });
+          }
+        }
+        AppState.activeSection = AppState.sections[0]?.id ?? 'verse-1';
+        if (_templatesPopover) _templatesPopover.style.display = 'none';
+        _analyzeAndRender();
+      });
+      _templatesList.appendChild(btn);
+    }
+  }
+
+  document.getElementById('btn-templates')?.addEventListener('click', () => {
+    if (_templatesPopover)
+      _templatesPopover.style.display = _templatesPopover.style.display === 'none' ? 'block' : 'none';
+  });
+  document.getElementById('btn-templates-close')?.addEventListener('click', () => {
+    if (_templatesPopover) _templatesPopover.style.display = 'none';
+  });
+  document.getElementById('btn-export-progression')?.addEventListener('click', exportProgression);
+  document.addEventListener('click', e => {
+    if (_templatesPopover?.style.display !== 'none' &&
+        !_templatesPopover.contains(e.target) &&
+        !document.getElementById('btn-templates')?.contains(e.target)) {
+      _templatesPopover.style.display = 'none';
+    }
+  });
 
   // ── Difficulty / Player Level filter ──────────────────────────────────────
   document.getElementById('difficulty-bar')?.addEventListener('click', e => {
+    e.stopPropagation(); // prevent bubbling to the parent panel-collapse-header row
     const btn = e.target.closest('.difficulty-btn[data-level]');
     if (!btn) return;
     AppState.difficultyFilter = btn.dataset.level;
@@ -112,11 +256,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const bodyId = btn.getAttribute('aria-controls');
     const body   = bodyId ? document.getElementById(bodyId) : null;
     if (!body) return;
-    const nowExpanded = body.style.display === 'none' || !body.style.display;
-    body.style.display = nowExpanded ? '' : 'none';
-    btn.setAttribute('aria-expanded', String(nowExpanded));
+    const isCurrentlyHidden = body.style.display === 'none';
+    body.style.display = isCurrentlyHidden ? '' : 'none';
+    btn.setAttribute('aria-expanded', String(isCurrentlyHidden));
     const chev = btn.querySelector('.panel-chevron');
-    if (chev) chev.textContent = nowExpanded ? '▼' : '▶';
+    if (chev) chev.textContent = isCurrentlyHidden ? '▼' : '▶';
   });
 
   // ── Theory Explanation Modal ───────────────────────────────────────────────
@@ -147,6 +291,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ── Progression chip delegation (wired once — avoids accumulation bug) ──
+  // Manual double-click detection: single click re-renders chips so browser's
+  // native dblclick never fires on the same DOM node. Track last click time/idx.
+  let _lastChipClickTime = 0;
+  let _lastChipClickIdx  = null;
+
   document.getElementById('chord-chips')?.addEventListener('click', e => {
     // Ctrl/Cmd clicks are already handled in mousedown above — skip them here
     if (e.ctrlKey || e.metaKey) return;
@@ -168,14 +317,34 @@ document.addEventListener('DOMContentLoaded', () => {
         if (AppState.selectedProgressionIdx === idx) AppState.selectedProgressionIdx = null;
         else if (AppState.selectedProgressionIdx > idx) AppState.selectedProgressionIdx--;
       }
+      _lastChipClickIdx = null; // reset so a remove+click isn't treated as dblclick
       _analyzeAndRender();
       _updateAddButton();
       return;
     }
     const chip = e.target.closest('.chord-chip');
     if (chip) {
-      // Normal click: load chord onto fretboard
       const idx = parseInt(chip.dataset.idx, 10);
+      const now = Date.now();
+      const isDouble = (now - _lastChipClickTime < 400) && (_lastChipClickIdx === idx);
+      _lastChipClickTime = now;
+      _lastChipClickIdx  = idx;
+
+      if (isDouble) {
+        // Double-click: re-add this chord after the currently selected position
+        const source = AppState.progression[idx];
+        if (source) {
+          const copy = { ...source };
+          const insertAfter = AppState.selectedProgressionIdx ?? idx;
+          AppState.progression.splice(insertAfter + 1, 0, copy);
+          AppState.selectedProgressionIdx = insertAfter + 1;
+          _analyzeAndRender();
+          _updateAddButton();
+        }
+        return;
+      }
+
+      // Single click: load chord onto fretboard
       const stored = AppState.progression[idx];
       if (stored) {
         // Use stored frets; if all muted (template chord), auto-generate a voicing
@@ -193,10 +362,23 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
   });
+
   document.getElementById('btn-clear-all')?.addEventListener('click', clearAll);
   document.getElementById('btn-clear-progression')?.addEventListener('click', clearProgression);
   document.getElementById('btn-add-chord')?.addEventListener('click', addChordToProgression);
-  document.getElementById('btn-replace-chord')?.addEventListener('click', replaceChordInProgression);
+  document.getElementById('btn-transpose-down')?.addEventListener('click', () => transposeProgression(-1));
+  document.getElementById('btn-transpose-up')?.addEventListener('click',   () => transposeProgression(+1));
+
+  // CoF ⓘ info button — toggles inline usage instructions
+  document.getElementById('btn-cof-info')?.addEventListener('click', () => {
+    const panel = document.getElementById('cof-instructions');
+    const btn   = document.getElementById('btn-cof-info');
+    if (!panel || !btn) return;
+    const isOpen = panel.style.display !== 'none';
+    panel.style.display = isOpen ? 'none' : '';
+    btn.setAttribute('aria-expanded', String(!isOpen));
+    btn.classList.toggle('cof-info-btn--active', !isOpen);
+  });
 
   // Wire section tabs (dynamic — handles tab clicks, + button, and type picker)
   document.getElementById('section-tabs')?.addEventListener('click', e => {
@@ -232,60 +414,28 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Enter') parseTabInput();
   });
 
-  // Wire chord-scale chip clicks from current chord panel
+  // Wire chord-scale chip clicks — clicking same scale again toggles it off
   document.getElementById('chord-info-panel')?.addEventListener('scale-activate', e => {
     const { type, rootPitch } = e.detail;
-    AppState.activeScale = { type, pitches: generateScale(rootPitch, type) };
-    AppState.showScale = true;
-    const btn = document.getElementById('btn-toggle-scale');
-    if (btn) { btn.setAttribute('data-active', 'true'); btn.textContent = 'Hide Scale'; }
-    _setActiveScaleButton(type);
+    const alreadyActive = AppState.showScale &&
+      AppState.activeScale?.type === type &&
+      AppState.activeScale?.rootPitch === rootPitch;
+    if (alreadyActive) {
+      AppState.activeScale = null;
+      AppState.showScale   = false;
+      const btn = document.getElementById('btn-toggle-scale');
+      if (btn) { btn.setAttribute('data-active', 'false'); btn.textContent = 'Show Scale'; }
+      _setActiveScaleButton(null);
+    } else {
+      AppState.activeScale = { type, rootPitch, pitches: generateScale(rootPitch, type) };
+      AppState.showScale   = true;
+      const btn = document.getElementById('btn-toggle-scale');
+      if (btn) { btn.setAttribute('data-active', 'true'); btn.textContent = 'Hide Scale'; }
+      _setActiveScaleButton(type);
+    }
     _fullRender();
   });
 
-  // Form templates
-  const formSelect = document.getElementById('form-template-select');
-  if (formSelect) {
-    for (const form of SONG_FORMS) {
-      const opt = document.createElement('option');
-      opt.value = form.key;
-      opt.textContent = `${form.name} (${form.genre})`;
-      formSelect.appendChild(opt);
-    }
-    formSelect.addEventListener('change', () => {
-      if (!formSelect.value) return;
-      const keyRoot = AppState.activeKey?.root ?? 0;
-      const keyQuality = AppState.activeKey?.quality ?? 'major';
-      const templateSections = instantiateForm(formSelect.value, keyRoot, keyQuality);
-      // Rebuild sections from template (unique types in order)
-      AppState.progression = [];
-      AppState.selectedProgressionIdx = null;
-      AppState.sections = [];
-      AppState.sectionCounts = {};
-      const typeToId = new Map();
-      for (const sec of templateSections) {
-        if (!typeToId.has(sec.section)) {
-          const type = sec.section;
-          AppState.sectionCounts[type] = (AppState.sectionCounts[type] ?? 0) + 1;
-          const n  = AppState.sectionCounts[type];
-          const id = `${type}-${n}`;
-          AppState.sections.push({ id, type, label: `${type[0].toUpperCase() + type.slice(1)} ${n}` });
-          typeToId.set(type, id);
-        }
-        const sectionId = typeToId.get(sec.section);
-        for (const chord of sec.chords) {
-          AppState.progression.push({
-            ...chord,
-            frets:   [-1, -1, -1, -1, -1, -1],
-            section: sectionId,
-          });
-        }
-      }
-      AppState.activeSection = AppState.sections[0]?.id ?? 'verse-1';
-      formSelect.value = ''; // reset dropdown
-      _analyzeAndRender();
-    });
-  }
 
   // Wire drag-to-reorder on the progression chips container (once, via delegation)
   _initProgressionDrag();
@@ -306,8 +456,9 @@ function onFretClick(stringIdx, fret) {
     AppState.selectedFrets[stringIdx] = current === fret ? -1 : fret;
   }
 
-  // Clear suggestion ghost and circle preview lock when user edits fretboard
+  // Clear suggestion ghost, circle preview lock, and replace mode when user edits fretboard
   AppState.suggestionFrets = null;
+  AppState.selectedProgressionIdx = null;
   _clearPreviewLock();
 
   _analyzeAndRender();
@@ -391,8 +542,41 @@ function _applyManualKeyChange(root, quality) {
 }
 
 // ─── Circle of Fifths click ────────────────────────────
-function onCircleKeyClick(rootPitch, quality) {
-  _applyManualKeyChange(rootPitch, quality);
+function onCircleKeyClick(rootPitch, quality, event, forceSet) {
+  // Shift-click: compare mode
+  if (event?.shiftKey) {
+    CircleOfFifths.handleCompareClick(rootPitch, quality);
+    return;
+  }
+
+  // Force-set from "Set as Key" button inside detail card
+  if (forceSet) {
+    _applyManualKeyChange(rootPitch, quality);
+    return;
+  }
+
+  // No key detected yet → show exploration info first; user clicks "Set as Key" to commit
+  if (!AppState.activeKey) {
+    CircleOfFifths.showSegmentInfo(rootPitch, quality, null, AppState.progression);
+    return;
+  }
+
+  // Key detected → show info card, no override
+  CircleOfFifths.showSegmentInfo(
+    rootPitch, quality,
+    AppState.activeKey,
+    AppState.progression
+  );
+}
+
+// ─── CoF "Often Moves To" chip → load chord on fretboard ───────────────────
+function onCircleChordLoad(rootPitch, quality) {
+  const voicings = generateVoicings(rootPitch, quality, AppState.tuning);
+  if (!voicings.length) return;
+  AppState.selectedFrets   = voicings[0].frets.slice();
+  AppState.suggestionFrets = null;
+  // currentChord will be auto-identified from the new frets by _analyzeAndRender
+  _analyzeAndRender();
 }
 
 // ─── Scale Controls ────────────────────────────────────
@@ -452,6 +636,7 @@ function addChordToProgression() {
   if (AppState.sections.length === 0) {
     addSection('verse');
   }
+  AppState.selectedProgressionIdx = null; // exit replace mode when adding new chord
   AppState.progression.push({
     ...AppState.currentChord,
     frets:   AppState.selectedFrets.slice(),
@@ -494,6 +679,39 @@ function replaceChordInProgression() {
   _updateAddButton();
 }
 
+function transposeProgression(direction) {
+  // direction: +1 = clockwise (up a 5th), -1 = counterclockwise (down a 5th / up a 4th)
+  if (!AppState.progression.length) return;
+  AppState.progression = AppState.progression.map(chord => {
+    const rootPitch = ((chord.root % 12) + 12) % 12;
+    const pos    = FIFTHS_ORDER.indexOf(rootPitch);
+    const newPos = ((pos + direction) + 12) % 12;
+    const newRoot = FIFTHS_ORDER[newPos];
+    // Use flats for positions >= 7 on the flat side of the circle
+    const preferFlats = newPos >= 7;
+    const newRootNote = preferFlats ? CHROMATIC_FLAT[newRoot] : CHROMATIC_SHARP[newRoot];
+    // Strip old root from chord name and prepend new root
+    const suffix = (chord.name ?? '').replace(/^[A-G][b#]?/, '');
+    const voicings = generateVoicings(newRoot, chord.quality, AppState.tuning);
+    const newFrets = voicings.length > 0 ? voicings[0].frets.slice() : [-1, -1, -1, -1, -1, -1];
+    return {
+      ...chord,
+      root:          newRoot,
+      rootNote:      newRootNote,
+      name:          newRootNote + suffix,
+      frets:         newFrets,
+      actualPitches: undefined,
+    };
+  });
+  AppState.keyOverridden = false; // let key auto re-detect
+  _analyzeAndRender();
+  _updateAddButton();
+}
+
+function exportProgression() {
+  openExportModal(AppState);
+}
+
 function clearProgression() {
   stopPlayback();
   AppState.isPlayingProgression = false;
@@ -514,6 +732,7 @@ function clearAll() {
   AppState.activeSection  = null;
   AppState.sectionKeys    = {};
   AppState.currentChord   = null;
+  AppState.keyResults     = [];
   AppState.activeKey      = null;
   AppState.keyOverridden  = false;
   AppState.activeScale    = null;
@@ -523,9 +742,12 @@ function clearAll() {
   AppState.explorerChord   = null;
   AppState.selectedChordIndices = [];
   AppState.selectedProgressionIdx = null;
+  AppState.capoFret = 0;
+  _pendingCapoFret  = 1;
   document.querySelectorAll('.scale-type-btn').forEach(b => b.classList.remove('active'));
   const toggleBtn = document.getElementById('btn-toggle-scale');
   if (toggleBtn) { toggleBtn.setAttribute('data-active', 'false'); toggleBtn.textContent = 'Show Scale'; }
+  CircleOfFifths.resetState();
   _fullRender();
   _updateAddButton();
 }
@@ -539,8 +761,9 @@ function parseTabInput() {
   // 1. Try fret-notation parse (e.g. "x32010")
   const frets = parseTabString(raw);
   if (frets) {
-    AppState.selectedFrets   = frets;
-    AppState.suggestionFrets = null;
+    AppState.selectedFrets          = frets;
+    AppState.suggestionFrets        = null;
+    AppState.selectedProgressionIdx = null;
     input.value = '';
     _analyzeAndRender();
     return;
@@ -551,8 +774,9 @@ function parseTabInput() {
   if (parsed) {
     const voicings = generateVoicings(parsed.root, parsed.quality, AppState.tuning);
     if (voicings.length > 0) {
-      AppState.selectedFrets   = voicings[0].frets.slice();
-      AppState.suggestionFrets = null;
+      AppState.selectedFrets          = voicings[0].frets.slice();
+      AppState.suggestionFrets        = null;
+      AppState.selectedProgressionIdx = null;
       input.value = '';
       _analyzeAndRender();
       return;
@@ -565,9 +789,18 @@ function parseTabInput() {
 }
 
 // ─── Chord Suggestion Click ────────────────────────────
-function onSuggestionClick(chord) {
+function onSuggestionClick(chord, voicing) {
+  // Load the chord onto the fretboard immediately so it appears in Current Chord
+  if (voicing) {
+    AppState.selectedFrets          = voicing.slice();
+    AppState.currentChord           = chord;
+    AppState.suggestionFrets        = null;
+    AppState.selectedProgressionIdx = null;
+  }
+  // Open the voicing explorer so the user can browse & pick alternate voicings
   AppState.explorerChord = chord ?? null;
   renderVoicingExplorer(AppState.explorerChord, AppState.tuning, onVoicingSelect, AppState.selectedFrets, AppState.difficultyFilter);
+  _fullRender();
 }
 
 function onVoicingSelect(frets) {
@@ -578,8 +811,9 @@ function onVoicingSelect(frets) {
 
 // ─── Chord Ideas callbacks ─────────────────────────────
 function onIdeaVoicingPreview(frets) {
-  AppState.selectedFrets   = frets.slice();
-  AppState.suggestionFrets = null;
+  AppState.selectedFrets          = frets.slice();
+  AppState.suggestionFrets        = null;
+  AppState.selectedProgressionIdx = null;
   _analyzeAndRender();
 }
 
@@ -692,7 +926,22 @@ function _updateFretboardChordLabel() {
     el.style.display = 'none';
     return;
   }
-  el.textContent = AppState.currentChord.slashName ?? AppState.currentChord.name;
+  const soundingName = AppState.currentChord.slashName ?? AppState.currentChord.name;
+
+  if (AppState.capoFret > 0) {
+    // Shift fretted notes back down by capoFret to recover the open-position shape
+    const shapeFrets = AppState.selectedFrets.map(f =>
+      (f === -1 || f === 0) ? f : Math.max(0, f - AppState.capoFret)
+    );
+    const { pitchSet: spSet, bassPitch: spBass } = fretboardToPitches(shapeFrets, AppState.tuning, 0);
+    const shapeChord = spSet.length ? identifyChord(spSet, spBass) : null;
+    const shapeName  = shapeChord ? (shapeChord.slashName ?? shapeChord.name) : '?';
+    el.innerHTML = shapeName !== soundingName
+      ? `${soundingName} <span class="fb-chord-shape-label">(Shape: ${shapeName})</span>`
+      : soundingName;
+  } else {
+    el.textContent = soundingName;
+  }
   el.style.display = '';
 }
 
@@ -705,17 +954,26 @@ function _updateFretboardChordLabel() {
 function _shiftChordShape(delta) {
   const frets = AppState.selectedFrets;
   const active = frets.filter(f => f !== -1);
-  if (active.length === 0) return;
+
+  // Empty fretboard + Up Neck → place a full barre at fret 1
+  if (active.length === 0) {
+    if (delta <= 0) return;
+    AppState.selectedFrets = [1, 1, 1, 1, 1, 1];
+    _analyzeAndRender();
+    _updateShiftControls();
+    return;
+  }
 
   if (delta < 0) {
-    // Shift down: only allowed when the lowest fretted (non-open) string > 0
+    // Shift down: stop at capo fret (or fret 1 if no capo) so notes stay above the capo
     const minFretted = Math.min(...frets.filter(f => f > 0));
-    if (!isFinite(minFretted) || minFretted <= 1) return; // already at nut
+    const capoFloor  = Math.max(1, AppState.capoFret);
+    if (!isFinite(minFretted) || minFretted <= capoFloor) return;
     AppState.selectedFrets = frets.map(f => (f === -1 || f === 0) ? f : f + delta);
   } else {
-    // Shift up: clamp so no string exceeds fret 22; open strings stay open
+    // Shift up: clamp so no string exceeds fret 24; open strings stay open
     const maxFret = Math.max(...frets.filter(f => f > 0), 0);
-    if (maxFret + delta > 22) return;
+    if (maxFret + delta > 24) return;
     AppState.selectedFrets = frets.map(f => (f === -1 || f === 0) ? f : f + delta);
   }
 
@@ -723,39 +981,52 @@ function _shiftChordShape(delta) {
   _updateShiftControls();
 }
 
-/** Sync the shape-shift bar visibility, position label, and button disabled states. */
+/**
+ * Sync the capo popover display using _pendingCapoFret (staged position).
+ * The .open glow on the capo icon is handled by tuning.js (matches popover open state).
+ */
+function _updateCapoUI() {
+  const posEl     = document.getElementById('capo-pos-display');
+  const removeBtn = document.getElementById('btn-remove-capo');
+  const applyBtn  = document.getElementById('btn-capo-apply');
+  const downBtn   = document.getElementById('btn-capo-down');
+  const upBtn     = document.getElementById('btn-capo-up');
+
+  if (posEl)     posEl.textContent = `${_pendingCapoFret}fr`;
+  if (removeBtn) removeBtn.hidden  = AppState.capoFret === 0;
+  if (applyBtn)  applyBtn.classList.toggle('pending', _pendingCapoFret !== AppState.capoFret);
+  if (downBtn)   downBtn.disabled  = _pendingCapoFret <= 1;
+  if (upBtn)     upBtn.disabled    = _pendingCapoFret >= 20;
+}
+
+/** Sync the shape-shift bar position label and button disabled states. */
 function _updateShiftControls() {
-  const bar    = document.getElementById('shape-shift-bar');
-  const posEl  = document.getElementById('shape-shift-pos');
+  const posEl   = document.getElementById('shape-shift-pos');
   const downBtn = document.getElementById('btn-shift-down');
   const upBtn   = document.getElementById('btn-shift-up');
-  if (!bar) return;
+  if (!posEl) return;
 
   const frets  = AppState.selectedFrets;
   const active = frets.filter(f => f !== -1);
 
   if (active.length === 0) {
-    bar.style.display = 'none';
+    posEl.textContent = 'Open';
+    downBtn.disabled  = true;
+    upBtn.disabled    = false; // Up Neck on empty creates a barre at fret 1
     return;
   }
-
-  bar.style.display = 'flex';
 
   const minFret    = Math.min(...active);
   const maxFret    = Math.max(...active);
   const minFretted = Math.min(...frets.filter(f => f > 0)); // excludes open & muted
 
-  // Position label
-  if (minFret === 0) {
-    posEl.textContent = 'Open';
-  } else {
-    posEl.textContent = `${minFret}fr`;
-  }
+  posEl.textContent = minFret === 0 ? 'Open' : `${minFret}fr`;
 
-  // Disable down when lowest fretted string is already at 1 (can't go lower)
-  downBtn.disabled = !isFinite(minFretted) || minFretted <= 1;
+  // Disable down when lowest fretted string is at or below the capo floor
+  const capoFloor  = Math.max(1, AppState.capoFret);
+  downBtn.disabled = !isFinite(minFretted) || minFretted <= capoFloor;
   // Disable up when highest string is at the neck limit
-  upBtn.disabled   = maxFret >= 22;
+  upBtn.disabled   = maxFret >= 24;
 }
 
 function _updatePlayProgressionBtn() {
@@ -791,21 +1062,27 @@ function _triggerKeyGlow() {
  * Show or hide the "Replace in Progression" button in the Current Chord panel.
  */
 function _updateAddButton() {
-  const replaceBtn = document.getElementById('btn-replace-chord');
-  if (!replaceBtn) return;
-  const isReplace = AppState.selectedProgressionIdx !== null;
-  replaceBtn.style.display = isReplace ? '' : 'none';
+  const transposeRow = document.getElementById('transpose-row');
+  if (transposeRow) transposeRow.style.display = AppState.progression.length > 0 ? '' : 'none';
 }
 
 function _analyzeAndRender() {
-  // 1. Identify current chord from fretboard
+  // 1. Identify current chord from fretboard (open strings sound at capo fret when capo active)
   const { pitchSet, bassPitch, allPitches } = fretboardToPitches(
-    AppState.selectedFrets, AppState.tuning
+    AppState.selectedFrets, AppState.tuning, AppState.capoFret
   );
   const identified = identifyChord(pitchSet, bassPitch);
   // In replace mode, keep showing the loaded progression chord until the user
   // builds a new recognizable chord on the fretboard
   AppState.currentChord = identified ?? (AppState.selectedProgressionIdx !== null ? AppState.currentChord : null);
+
+  // 1b. Store inversion type for glossary contextual terms + theory panel
+  if (AppState.currentChord) {
+    const inv = AppState.currentChord.inversion ?? 0;
+    AppState.currentInversion = inv === 0 ? 'root' : inv === 1 ? 'first' : 'second';
+  } else {
+    AppState.currentInversion = null;
+  }
 
   // 2. Run key detection on progression (or single chord if no progression)
   const chordsForDetection = AppState.progression.length > 0
@@ -910,7 +1187,7 @@ function _applyKeySpelling(chord, keyRoot) {
   const rootNote = pitchToNoteInKey(chord.root, keyRoot);
   chord.rootNote = rootNote;
   chord.name     = rootNote + (CHORD_SUFFIXES[chord.quality] ?? chord.quality);
-  if (chord.inversion === 1 && chord.bassPitch != null) {
+  if (chord.inversion > 0 && chord.bassPitch != null) {
     const bassNote  = pitchToNoteInKey(chord.bassPitch, keyRoot);
     chord.bassNote  = bassNote;
     chord.slashName = `${chord.name}/${bassNote}`;
@@ -958,13 +1235,19 @@ function _renderFretboard() {
     : null;
   const tonicPitch = AppState.activeKey?.root ?? null;
 
+  // Show pending bar only while the capo popover is open (preview mode).
+  // When the popover is closed, use the committed capoFret so no stale bar appears on load.
+  const capoPopoverOpen = !document.getElementById('capo-popover')?.hidden;
+  const capoBarFret = capoPopoverOpen ? _pendingCapoFret : AppState.capoFret;
+
   Fretboard.render(
     AppState.selectedFrets,
     AppState.tuning,
     scalePitches,
     tonicPitch,
     AppState.suggestionFrets,
-    AppState.activePosition
+    AppState.activePosition,
+    capoBarFret
   );
 }
 
@@ -972,6 +1255,7 @@ function _renderAll() {
   // Live chord label on fretboard
   _updateFretboardChordLabel();
   _updateShiftControls();
+  _updateCapoUI();
 
   // Chord info — pass the progression slot's frets so voicing panel can distinguish saved vs active
   const _progressionFrets = AppState.selectedProgressionIdx !== null
@@ -984,25 +1268,29 @@ function _renderAll() {
     AppState.activeKey ?? null,
     onVoicingSelect,
     addChordToProgression,
-    _progressionFrets
+    _progressionFrets,
+    !!AppState.explorerChord,  // hide built-in voicings dropdown when explorer is open
+    AppState.selectedProgressionIdx !== null,
+    replaceChordInProgression,
   );
 
-  // Key panel — pass activeKey so the panel reflects manual overrides
-  renderKeyPanel(AppState.keyResults, AppState.activeKey, _applyManualKeyChange);
+  // Key panel — if no keyResults yet but user has manually set a key (e.g. from CoF
+  // exploration before adding any chords), synthesize a single result so the panel renders.
+  const keyResultsForPanel = AppState.keyResults.length > 0
+    ? AppState.keyResults
+    : (AppState.activeKey ? [{ key: AppState.activeKey, confidence: 1.0 }] : []);
+  renderKeyPanel(keyResultsForPanel, AppState.activeKey, _applyManualKeyChange);
 
   // Chord suggestions
   ChordSuggestions.renderChordSuggestions(AppState.activeKey, onSuggestionClick, _onChordHover, _onChordPreviewLock, AppState.tuning);
 
   // Scale suggestions panel (replaces manual scale buttons when confidence ≥ 0.50)
   const confidence = AppState.keyResults[0]?.confidence ?? 0;
-  renderScaleSuggestions(AppState.activeKey, AppState.tuning, onScaleSuggestionActivate, AppState.progression);
+  renderScaleSuggestions(AppState.activeKey, AppState.tuning, onScaleSuggestionActivate, AppState.progression, AppState.capoFret);
   const manualScaleControls = document.getElementById('scale-manual-controls');
   if (manualScaleControls) {
     manualScaleControls.style.display = AppState.activeKey && confidence >= 0.50 ? 'none' : '';
   }
-
-  // Alternate voicings for the chord currently on the fretboard
-  renderAltVoicings(AppState.currentChord, AppState.tuning, onVoicingSelect, AppState.selectedFrets, AppState.difficultyFilter);
 
   // Voicing explorer (persists until cleared or new chord selected)
   renderVoicingExplorer(AppState.explorerChord, AppState.tuning, onVoicingSelect, AppState.selectedFrets, AppState.difficultyFilter);
@@ -1033,6 +1321,11 @@ function _renderAll() {
       if (tp) { tp.innerHTML = ''; tp.style.display = 'none'; }
     }
   }
+
+  // Keep circle always interactive (clicks now show info card, not override)
+  CircleOfFifths.setEnabled(true);
+  // Keep the module's active-key ref fresh for hover tooltips
+  CircleOfFifths.setActiveKeyRef(AppState.activeKey);
 
   // Function flowchart
   renderFunctionFlowchart(AppState.activeKey, AppState.progression, AppState.currentChord);
@@ -1380,7 +1673,7 @@ function _renderProgressionChips() {
           <span class="chord-chip${isCtrlSelected ? ' chip-ctrl-selected' : ''}${isLoaded ? ' chip-loaded' : ''}" draggable="true" data-idx="${i}" title="Click to load · Ctrl+click to select for analysis · Drag to reorder">
             <span class="chip-drag-handle" aria-hidden="true">⠿</span>
             <button class="btn-play chip-play-btn" data-idx="${i}" title="Play this chord">▶</button>
-            <span class="chip-chord-name">${chord.name}</span>
+            <span class="chip-chord-name">${chord.slashName ?? chord.name}</span>
             <span class="chip-numeral">${numeral}</span>
             <span class="chip-remove" data-remove="${i}" title="Remove">✕</span>
           </span>

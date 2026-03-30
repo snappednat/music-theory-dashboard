@@ -111,6 +111,29 @@ function _bassMotionDesc(fromRoot, toRoot) {
   return 'tritone leap';
 }
 
+/** Build an inversion hint row for a chord card (shown when inversion > 0). */
+function _inversionHtml(chord) {
+  if (!chord || !chord.inversion) return '';
+  const bassNote = chord.bassNote ?? chord.slashName?.split('/')[1] ?? '';
+  if (!bassNote) return '';
+  const inv = chord.inversion;
+  let label, hint;
+  if (inv === 1) {
+    label = '1st inversion';
+    hint  = `${bassNote} (the 3rd) is in the bass — pulls toward the next chord by a half step`;
+  } else if (inv === 2) {
+    label = '2nd inversion';
+    hint  = `${bassNote} (the 5th) is in the bass — less stable, tends to resolve to the ${bassNote} chord`;
+  } else {
+    label = 'Slash chord';
+    hint  = `${bassNote} is in the bass`;
+  }
+  return `<div class="theory-inversion-hint">
+    <span class="theory-inv-badge">${label}</span>
+    <span class="theory-inv-desc">${hint}</span>
+  </div>`;
+}
+
 /** Map a Roman numeral to the same color class used in the Next Chord panel. */
 function _numeralClass(numeral) {
   const n = (numeral ?? '').replace(/[^IVXivxøo°+♭♯]/g, '');
@@ -359,12 +382,15 @@ function _chordCardHtml(chord, key, prevChord, nextChord, isFirstOccurrence, idx
 
   const whyHtml = _whyThisWorks(chord, prevChord, nextChord, key, cadences, idx);
   const numCls = _numeralClass(numeral);
+  const displayName = chord.slashName ?? chord.name;
+  const inversionHtml = _inversionHtml(chord);
   return `<div class="theory-chord-card">
     <div class="theory-chord-header">
       <span class="theory-numeral-badge idea-numeral-${numCls}">${numeral}</span>
-      <span class="theory-chord-name">${chord.name}</span>
+      <span class="theory-chord-name">${displayName}</span>
       <span class="theory-chord-quality">${qualLabel}</span>
     </div>
+    ${inversionHtml}
     ${identityHtml}
     ${qualityHtml}
     <div class="theory-motion">${fromHtml}${toHtml}</div>
@@ -521,7 +547,9 @@ function _doRenderTheory() {
   if (currentChord && (!chords || chords.length === 0)) {
     const tones    = currentChord.actualPitches ? currentChord.actualPitches.map(p => CHROMATIC_SHARP[p]).join(' – ') : '—';
     const qualLabel = CHORD_QUALITY_LABELS[currentChord.quality] || currentChord.quality;
-    html += `<div class="theory-item chord-item">Current chord: <strong>${currentChord.name}</strong> (${qualLabel}).<br>Chord tones: ${tones}.</div>`;
+    const displayName = currentChord.slashName ?? currentChord.name;
+    const invHtml  = _inversionHtml(currentChord);
+    html += `<div class="theory-item chord-item">Current chord: <strong>${displayName}</strong> (${qualLabel}).<br>Chord tones: ${tones}.${invHtml ? `<br>${invHtml}` : ''}</div>`;
   }
 
   container.innerHTML = html || '<div class="key-placeholder">Chords and key analysis will appear here…</div>';
@@ -613,15 +641,17 @@ function _funcLabel(funcs) {
   return 'Mixed harmonic motion';
 }
 
-function _arcTag(label) {
+function _arcTag(label, keyQuality = 'major') {
+  const isMinor = keyQuality === 'minor' || keyQuality === 'dorian'
+               || keyQuality === 'phrygian' || keyQuality === 'aeolian';
   return ({
-    'Tonic prolongation':    'stable',
+    'Tonic prolongation':    isMinor ? 'introspective' : 'stable',
     'Dominant preparation':  'building',
-    'Dominant tension loop': 'tension',
+    'Dominant tension loop': isMinor ? 'dark'          : 'tension',
     'Tonic expansion':       'floating',
-    'Full resolution':       'resolved',
+    'Full resolution':       isMinor ? 'cathartic'     : 'triumphant',
     'Dominant tension':      'suspended',
-    'Mixed harmonic motion': 'mixed',
+    'Mixed harmonic motion': isMinor ? 'bittersweet'   : 'mixed',
   })[label] ?? 'mixed';
 }
 
@@ -632,11 +662,37 @@ function _bassMotionText(chords) {
     const diff = Math.abs(normalizePitch(chords[i + 1].root) - normalizePitch(chords[i].root));
     intervals.push(Math.min(diff, 12 - diff));
   }
-  const step   = intervals.filter(v => v <= 2).length;
-  const fourth = intervals.filter(v => v === 5 || v === 7).length;
-  if (step > 0 && fourth > 0) return 'Mix of stepwise (smooth) and 4th/5th jumps (uplifting)';
-  if (fourth > step) return 'Frequent 4th/5th jumps — circle-of-fifths motion';
-  return 'Predominantly stepwise — smooth, vocal motion';
+  const total     = intervals.length;
+  const chromatic = intervals.filter(v => v === 1).length;
+  const step      = intervals.filter(v => v === 2).length;
+  const third     = intervals.filter(v => v === 3 || v === 4).length;
+  const fourth    = intervals.filter(v => v === 5 || v === 7).length;
+  const tritone   = intervals.filter(v => v === 6).length;
+
+  const lines = [];
+  if (fourth / total >= 0.5) {
+    lines.push('Predominantly 4th/5th jumps — circle-of-fifths motion (Jazz, Blues, Funk)');
+    lines.push('Creates strong forward momentum and harmonic drive');
+  } else if (third / total >= 0.4) {
+    lines.push('Frequent 3rd motion — mediant relationships (Neo-Soul, Film, R&B)');
+    lines.push('Adds unexpected color and cinematic depth');
+  } else if (chromatic > 0 && (chromatic + step) / total >= 0.5) {
+    lines.push('Stepwise with chromatic passing — smooth, voice-led bass (Jazz, Classical)');
+    lines.push('Creates connected, singable bass contour');
+  } else if ((step + chromatic) / total >= 0.5 && fourth > 0) {
+    lines.push('Mix of stepwise and 4th/5th motion — balanced harmonic language (Pop, Folk)');
+    lines.push('Smooth contour with moments of strong directional pull');
+  } else if ((step + chromatic) / total >= 0.6) {
+    lines.push('Predominantly stepwise — smooth, vocal bass line (Pop, Classical, Ballads)');
+    lines.push('Contributes to smooth, connected emotional contour');
+  } else if (tritone / total >= 0.2) {
+    lines.push('Tritone motion present — high harmonic tension and ambiguity (Jazz, Blues)');
+    lines.push('Characteristic of tritone substitutions and altered harmony');
+  } else {
+    lines.push('Mixed interval motion — varied harmonic color');
+    lines.push('Contributes to emotional contour');
+  }
+  return lines;
 }
 
 /**
@@ -673,22 +729,25 @@ export function renderProgressionStory(key, chords, cadences = [], patterns = []
 
     const numerals = _numeralSeq(secChords, key);
     const label    = _funcLabel(funcs);
-    const arc      = _arcTag(label);
+    const arc      = _arcTag(label, key.quality);
 
     const secCads = cadences.filter(cad => {
       const ch = chords[cad.idx];
       return ch && _storySecOf(ch) === sec.id;
     });
 
-    const feelMap = {
-      'Tonic prolongation':    'stable, grounded, repetitive',
-      'Dominant preparation':  'building, anticipatory',
-      'Dominant tension loop': 'builds tension without resolving',
-      'Tonic expansion':       'open, floating',
-      'Full resolution':       'strong, purposeful resolution',
-      'Dominant tension':      'suspended, anticipatory',
-      'Mixed harmonic motion': 'varied',
+    const feelBadges = {
+      'Tonic prolongation':    [['stable','stable'], ['grounded','stable'], ['repetitive','mixed']],
+      'Dominant preparation':  [['building','building'], ['anticipatory','suspended']],
+      'Dominant tension loop': [['tense','tension'], ['unresolved','suspended']],
+      'Tonic expansion':       [['open','floating'], ['dreamy','floating']],
+      'Full resolution':       [['resolved','resolved'], ['purposeful','building']],
+      'Dominant tension':      [['suspended','suspended'], ['anticipatory','building']],
+      'Mixed harmonic motion': [['varied','mixed'], ['colorful','mixed']],
     };
+    const feelBadgeHtml = (feelBadges[label] ?? [['varied','mixed']])
+      .map(([word, cls]) => `<span class="story-arc-tag story-arc-${cls}">${word}</span>`)
+      .join(' ');
 
     sectionLabels.push(label);
     arcParts.push(`${sec.label}: <span class="story-arc-tag story-arc-${arc}">${arc}</span>`);
@@ -698,7 +757,7 @@ export function renderProgressionStory(key, chords, cadences = [], patterns = []
     html.push('<ul class="story-list">');
     html.push(`<li>Progression: <strong>${numerals}</strong></li>`);
     html.push(`<li>Function: <strong>${label}</strong></li>`);
-    html.push(`<li>Feel: ${feelMap[label] ?? 'varied'}</li>`);
+    html.push(`<li>Feel: ${feelBadgeHtml}</li>`);
     {
       const trueSec = secCads.filter(c => c.isTrueCadence);
       if (trueSec.length === 0) {
@@ -748,21 +807,38 @@ export function renderProgressionStory(key, chords, cadences = [], patterns = []
   html.push('</ul><hr class="story-rule">');
 
   // Bass Motion
-  const bassText = _bassMotionText(chords);
-  if (bassText) {
-    html.push(`<div class="story-h3">Bass Motion</div><ul class="story-list"><li>${bassText}</li><li>Contributes to emotional contour</li></ul><hr class="story-rule">`);
+  const bassLines = _bassMotionText(chords);
+  if (bassLines) {
+    html.push(`<div class="story-h3">Bass Motion</div><ul class="story-list">${bassLines.map(l => `<li>${l}</li>`).join('')}</ul><hr class="story-rule">`);
   }
 
   // Harmonic Rhythm
-  const hasLoop = sectionLabels.some(l => l.includes('loop') || l === 'Dominant preparation');
-  const hasPAC  = cadences.some(c => c.typeKey === 'PAC');
+  const hasLoop        = sectionLabels.some(l => l.includes('loop') || l === 'Dominant preparation');
+  const hasPAC         = cadences.some(c => c.typeKey === 'PAC');
+  const hasHC          = cadences.some(c => c.typeKey === 'HC');
+  const uniqueRoots    = new Set(chords.map(c => ((c.root % 12) + 12) % 12)).size;
+  const detectedGenres = [...new Set(patterns.map(p => p.pattern?.genre).filter(Boolean))];
+
   html.push('<div class="story-h3">Harmonic Rhythm</div><ul class="story-list">');
   if (hasLoop) {
-    html.push('<li>Loop-based progression with delayed resolution</li><li>Avoids strong cadential endings</li>');
+    html.push('<li>Loop-based progression — repeating harmonic cycle with delayed resolution</li>');
+    if (uniqueRoots <= 3) {
+      html.push('<li>Tight 2–3 chord palette — maximum repetition and groove (Pop, EDM, Hip-Hop)</li>');
+    } else {
+      html.push('<li>Multi-chord loop — richer variation while maintaining cyclical momentum (R&B, Neo-Soul)</li>');
+    }
   } else if (hasPAC) {
-    html.push('<li>Resolving arc — functional movement toward home</li>');
+    html.push('<li>Resolving arc — functional T→PD→D→T movement with authentic close</li>');
+    html.push('<li>Classical or structured harmonic language (Classical, Musical Theatre, Gospel)</li>');
+  } else if (hasHC) {
+    html.push('<li>Half-cadence ending — tension deliberately left unresolved, phrase feels open</li>');
+    html.push('<li>Common in bridge sections and verse builds (Rock, Film, Indie)</li>');
   } else {
-    html.push('<li>Open progression — avoids strong resolution</li>');
+    html.push('<li>Open progression — avoids strong resolution, maintains harmonic ambiguity</li>');
+    html.push('<li>Creates a floating, suspended quality (Dream Pop, Ambient, Post-Rock)</li>');
+  }
+  if (detectedGenres.length > 0) {
+    html.push(`<li>Named pattern genre: <em>${detectedGenres.join(', ')}</em></li>`);
   }
   html.push('</ul>');
 
@@ -772,6 +848,52 @@ export function renderProgressionStory(key, chords, cadences = [], patterns = []
   }
 
   container.innerHTML = `<div class="story-block">${html.join('')}</div>`;
+}
+
+// ─── Data export for PDF generation ──────────────────────────────────────────
+
+const _CADENCE_LABELS = {
+  PAC: 'Authentic Cadence (V→I)', IAC: 'Imperfect Authentic Cadence',
+  HC:  'Half Cadence (ends on V)',  PC:  'Plagal Cadence (IV→I)',
+  DC:  'Deceptive Cadence (V→vi)',
+};
+
+/**
+ * Returns structured chord analysis data for use by pdfExport.js.
+ * Does not touch the DOM.
+ */
+export function getChordAnalysisData(chord, key, prevChord, idx, cadences) {
+  if (!chord || !key) return null;
+  const deg = getDegreeInKey(chord.root, key);
+  const dc  = deg ? key.diatonicChords[deg - 1] : null;
+  const numeral      = dc?.numeral ?? '✦';
+  const qualityLabel = CHORD_QUALITY_LABELS[chord.quality] || chord.quality;
+  const displayName  = chord.slashName ?? chord.name;
+  const harmonicFunction = deg ? getHarmonicFunction(deg, key.quality) : null;
+
+  // Diatonic identity text or non-diatonic classification (strip HTML tags)
+  const rawClass = deg
+    ? ((DEGREE_EXPLANATIONS[key.quality] || DEGREE_EXPLANATIONS.major)[deg] ?? '')
+    : classifyNonDiatonic(chord, key);
+  const classification = rawClass.replace(/<[^>]+>/g, '');
+
+  const qualityColor = _qualityColor(chord.quality);
+
+  const cad = Array.isArray(cadences) ? cadences.find(c => c.idx === idx) : null;
+  const cadenceLabel = cad ? (_CADENCE_LABELS[cad.typeKey] ?? cad.typeKey) : null;
+  const cadenceIsTrueCadence = cad?.isTrueCadence ?? false;
+
+  const commonTones    = prevChord ? _commonTones(prevChord, chord) : [];
+  const bassMotion     = prevChord ? _bassMotionDesc(prevChord.root, chord.root) : null;
+  const prevFn         = _getChordFn(prevChord, key);
+  const fn             = _getChordFn(chord, key);
+  const functionalMotion = prevChord ? (_motionLabel(prevFn, fn) ?? null) : null;
+
+  return {
+    numeral, degree: deg, harmonicFunction, classification, qualityColor,
+    cadenceLabel, cadenceIsTrueCadence, commonTones, bassMotion, functionalMotion,
+    displayName, qualityLabel,
+  };
 }
 
 // Export richness helper for use in app.js section character/texture delta

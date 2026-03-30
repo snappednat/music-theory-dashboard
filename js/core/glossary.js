@@ -216,6 +216,75 @@ export const GLOSSARY = {
     short: 'Notes shared between two adjacent chords — the glue of smooth voice leading.',
     long:  'Common tones are pitches that appear in both the current chord and the next. Keeping those notes stationary while the other voices move minimises overall hand movement and creates a sense of continuity. Progressions with many common tones (e.g. I–vi, which share two notes) feel cohesive; those with none (e.g. I–bII) feel more dramatic. The ✦ count in the Relationship Analysis arrows shows how many tones are shared at each step.',
   },
+
+  // ── Inversions & Slash Chords ────────────────────────────────────────────────
+
+  root_position: {
+    term: 'Root Position',
+    short: 'The chord\'s root note is the lowest-sounding note — the most stable voicing.',
+    long:  'A chord is in root position when the root (the note the chord is named after) is the bass note. For example, a G major chord with G as the lowest note is in root position. Root position voicings sound the most stable and grounded. On guitar, most standard open-position chords are in root position — the low string is fretted or muted to put the root in the bass.',
+  },
+  first_inversion: {
+    term: 'First Inversion',
+    short: 'The chord\'s 3rd is the bass note — creates forward motion.',
+    long:  'A chord is in first inversion when the 3rd of the chord is the lowest note. Written as a slash chord: G/B means G major with B (the 3rd) in the bass. First inversion chords have a characteristic forward pull — the bass note wants to resolve up by a half step to the root of the next chord (e.g. G/B → C). They are common in descending bass lines and smooth voice-led progressions.',
+  },
+  second_inversion: {
+    term: 'Second Inversion',
+    short: 'The chord\'s 5th is the bass note — unstable, pulls toward the bass-note chord.',
+    long:  'A chord is in second inversion when the 5th of the chord is the lowest note. Written as a slash chord: C/G means C major with G in the bass. Second inversion chords feel less stable than root position or first inversion, and typically resolve to the chord built on the bass note (C/G → G). The cadential 6/4 (I in second inversion before V) is one of the most recognisable uses in classical music.',
+  },
+  slash_chord: {
+    term: 'Slash Chord',
+    short: 'Notation for specifying the bass note: "Chord / Bass" (e.g. G/B).',
+    long:  'A slash chord is written as X/Y where X is the chord quality and Y is the bass note. G/B means play a G major chord with B as the lowest note (first inversion). D/F# means D major with F# in the bass. Slash chords often appear in descending or ascending bass lines — e.g. C → G/B → Am creates a smooth stepwise descent. On guitar, they require muting higher strings below the target bass note or finding the bass note on a lower string.',
+  },
+
+  // ── Intervals & Steps ───────────────────────────────────────────────────────
+
+  half_step: {
+    term: 'Half Step (Semitone)',
+    short: 'The smallest interval in Western music — one fret on guitar.',
+    long:  'A half step (or semitone) is the distance from one note to the very next adjacent note — no note in between. On the guitar, moving one fret up or down is always a half step. On the piano, adjacent keys (including black keys) are a half step apart. There is no half step between E and F, or B and C — those pairs are naturally adjacent with no sharp or flat between them. The Jaws theme is a famous half-step ostinato.',
+  },
+  whole_step: {
+    term: 'Whole Step (Tone)',
+    short: 'Two half steps — skip one note, or move two frets on guitar.',
+    long:  'A whole step equals two half steps. On the guitar, moving two frets (skipping one) is a whole step. On the piano, a whole step skips one key (white or black). C to D is a whole step; D to E is a whole step; but E to F is only a half step. Understanding whole vs. half steps is essential for building scales — the major scale follows the pattern W–W–H–W–W–W–H.',
+  },
+  major_scale_formula: {
+    term: 'Major Scale Formula (W–W–H–W–W–W–H)',
+    short: 'The interval pattern that defines any major scale: Whole–Whole–Half–Whole–Whole–Whole–Half.',
+    long:  'Every major scale is built by following the same pattern of whole steps (W) and half steps (H) starting from the root: <strong>W–W–H–W–W–W–H</strong>. Starting on G: G(W)A(W)B(H)C(W)D(W)E(W)F#(H)G. The F must become F# to satisfy the W between E and F#, which is why G major has one sharp. Apply this formula to any starting note to build its major scale — and to derive which notes must be sharp or flat.',
+  },
+  major_third: {
+    term: 'Major Third',
+    short: 'An interval of 4 semitones — the bright-sounding 3rd in a major chord.',
+    long:  'A major third spans 4 half steps. It is the interval between the root and the 3rd degree of a major chord (and a major scale). For example, G to B is a major third (4 frets). The major third gives major chords their characteristic bright, happy quality. On guitar, on the same string, a major third is always 4 frets up from any note.',
+  },
+  minor_third: {
+    term: 'Minor Third',
+    short: 'An interval of 3 semitones — the dark-sounding 3rd in a minor chord.',
+    long:  'A minor third spans 3 half steps — one semitone narrower than a major third. It is the interval between the root and the 3rd of a minor chord. For example, G to Bb is a minor third (3 frets). To convert any major chord to minor, flatten the 3rd by one half step (e.g. G–B–D becomes G–Bb–D). The minor third gives minor chords their darker, more introspective quality.',
+  },
+  perfect_fifth: {
+    term: 'Perfect Fifth',
+    short: 'An interval of 7 semitones — the stable upper note in any major or minor chord.',
+    long:  'A perfect fifth spans 7 half steps. It is the interval between the root and the 5th of any major or minor triad. For example, G to D is a perfect fifth. The perfect fifth is the most consonant interval after the octave, which is why power chords (root + 5th) sound so strong and full. In the circle of fifths, each key is a perfect fifth away from the next — that\'s what makes it a circle of <em>fifths</em>.',
+  },
+
+  // ── Key Signature Mnemonics ──────────────────────────────────────────────────
+
+  sharps_mnemonic: {
+    term: 'Order of Sharps — "Fat Cats Get Dizzy After Eating Breakfast"',
+    short: 'Mnemonic for the order sharps are added: F# C# G# D# A# E# B#.',
+    long:  'As you move clockwise around the circle of fifths, each key adds one more sharp. The order those sharps are added is always <strong>F# → C# → G# → D# → A# → E# → B#</strong>. The mnemonic "Fat Cats Get Dizzy After Eating Breakfast" gives the first letter of each sharp. G major has 1 sharp (F#). D major has 2 sharps (F#, C#). A major has 3 sharps (F#, C#, G#), and so on. To find the sharps in any key, count how many sharps that key has, then list the first N letters from the mnemonic.',
+  },
+  flats_mnemonic: {
+    term: 'Order of Flats — "Before Eating A Donut, Get Coffee First" (BEAD GCF)',
+    short: 'Mnemonic for the order flats are added: Bb Eb Ab Db Gb Cb Fb.',
+    long:  'As you move counter-clockwise around the circle of fifths, each key adds one more flat. The order is always <strong>Bb → Eb → Ab → Db → Gb → Cb → Fb</strong>. The mnemonic "Before Eating A Donut, Get Coffee First" (or just "BEAD GCF") gives the first letter. F major has 1 flat (Bb). Bb major has 2 flats (Bb, Eb). Eb major has 3 flats (Bb, Eb, Ab), and so on. Notice the flats order is the exact reverse of the sharps order.',
+  },
 };
 
 /**
@@ -346,6 +415,31 @@ export function getContextualTerms(appState) {
     terms.add('barre_chord');
     terms.add('open_position');
     terms.add('voice_leading_score');
+    terms.add('major_third');
+    terms.add('minor_third');
+    terms.add('perfect_fifth');
+  }
+
+  // Inversion terms when an inversion is detected on the fretboard
+  if (appState.currentInversion && appState.currentInversion !== 'root') {
+    terms.add('inversion');
+    terms.add('slash_chord');
+    if (appState.currentInversion === 'first') terms.add('first_inversion');
+    if (appState.currentInversion === 'second') terms.add('second_inversion');
+  }
+  if (appState.currentInversion === 'root') {
+    terms.add('root_position');
+  }
+
+  // Key signature info: always show mnemonics when a key is active
+  if (activeKey) {
+    terms.add('major_scale_formula');
+    terms.add('half_step');
+    terms.add('whole_step');
+    if (activeKey.quality === 'major') {
+      terms.add('sharps_mnemonic');
+      terms.add('flats_mnemonic');
+    }
   }
 
   return terms;

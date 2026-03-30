@@ -192,21 +192,34 @@ export function getChordScales(chordRoot, chordQuality) {
 
 /**
  * Compute playable scale positions (box shapes) for a given scale.
- * Returns up to 5 positions, each covering a 4-fret window of the neck.
+ * Returns scale box positions covering the 24-fret neck.
+ * Pentatonic/blues: 3-fret windows, up to 5 positions.
+ * Diatonic/modal:   4-fret windows, up to 7 positions.
  * @param {number} rootPitch
  * @param {string} scaleType
  * @param {number[]} tuning - pitch class per string (index 0 = low E)
  * @returns {{ name: string, startFret: number, endFret: number, notes: {string, fret, pitch, isRoot}[] }[]}
  */
-export function getScalePositions(rootPitch, scaleType, tuning) {
+export function getScalePositions(rootPitch, scaleType, tuning, minFret = 0) {
   const scalePitches = generateScale(rootPitch, scaleType);
-  const WINDOW = 4;
-  const START_FRETS = [0, 4, 7, 9, 12];
-  const NAMES = ['Open Position', '4th-7th Fret', '7th-10th Fret', '9th-12th Fret', '12th Position'];
+
+  const isPentatonicLike = ['pentatonic_major', 'pentatonic_minor', 'blues'].includes(scaleType);
+  const WINDOW      = isPentatonicLike ? 3 : 4;
+  const MAX_POS     = isPentatonicLike ? 5 : 7;
+  // Offset all start positions by minFret (capo fret) so positions begin at or above the capo
+  const START_FRETS = (isPentatonicLike
+    ? [0, 3, 5, 7, 10, 12, 15, 17, 19, 22]
+    : [0, 4, 7, 9, 12, 16, 19]).map(f => f + minFret);
+
+  function _posName(start, end) {
+    if (start === 0)  return 'Open Position';
+    if (start === 12) return '12th Position';
+    return `${start}th\u2013${end}th Fret`;
+  }
 
   const positions = [];
-  for (let pi = 0; pi < START_FRETS.length; pi++) {
-    const start = START_FRETS[pi];
+  for (const start of START_FRETS) {
+    if (positions.length >= MAX_POS) break;
     const end   = start + WINDOW;
     const notes = [];
     for (let s = 0; s < 6; s++) {
@@ -218,7 +231,7 @@ export function getScalePositions(rootPitch, scaleType, tuning) {
       }
     }
     if (notes.length >= 4) {
-      positions.push({ name: NAMES[pi] || `${start}th Position`, startFret: start, endFret: end, notes });
+      positions.push({ name: _posName(start, end), startFret: start, endFret: end, notes });
     }
   }
   return positions;

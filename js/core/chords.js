@@ -311,13 +311,15 @@ export function buildChord(rootPitch, quality) {
  * @param {number[]} selectedFrets  [-1=muted, 0=open, 1-22=fret]; index 0 = low string
  * @param {number[]} tuning         pitch class per string; index 0 = low string
  */
-export function fretboardToPitches(selectedFrets, tuning) {
+export function fretboardToPitches(selectedFrets, tuning, capoFret = 0) {
   const allPitches = [];
   let bassPitch = null;
 
   for (let i = 0; i < 6; i++) {
     if (selectedFrets[i] === -1) continue;
-    const pitch = normalizePitch(tuning[i] + selectedFrets[i]);
+    // Open strings (fret 0) sound at the capo position when a capo is active
+    const effectiveFret = (selectedFrets[i] === 0 && capoFret > 0) ? capoFret : selectedFrets[i];
+    const pitch = normalizePitch(tuning[i] + effectiveFret);
     allPitches.push(pitch);
     if (bassPitch === null) bassPitch = pitch; // lowest string first
   }
@@ -371,7 +373,16 @@ export function identifyChord(pitchSet, bassPitch = null) {
       if (score > bestScore) {
         bestScore = score;
         const rootNote = CHROMATIC_SHARP[candidateRoot];
-        const isInversion = bassPitch !== null && bassPitch !== candidateRoot;
+        // Determine inversion type: 0=root, 1=first (3rd in bass), 2=second (5th in bass)
+        let inversionNum = 0;
+        if (bassPitch !== null && bassPitch !== ((candidateRoot % 12 + 12) % 12)) {
+          const thirdPitch = bassPitch !== null ? ((candidateRoot + (formula[1] ?? 0)) % 12 + 12) % 12 : null;
+          const fifthPitch = bassPitch !== null && formula[2] != null ? ((candidateRoot + formula[2]) % 12 + 12) % 12 : null;
+          const bpNorm = ((bassPitch % 12) + 12) % 12;
+          if (thirdPitch !== null && bpNorm === thirdPitch) inversionNum = 1;
+          else if (fifthPitch !== null && bpNorm === fifthPitch) inversionNum = 2;
+          else inversionNum = 1; // non-chord-tone bass — treat as slash/first for display
+        }
         best = {
           root: candidateRoot,
           rootNote,
@@ -379,12 +390,12 @@ export function identifyChord(pitchSet, bassPitch = null) {
           name: formatChordName(rootNote, quality),
           pitches: buildChord(candidateRoot, quality),
           actualPitches: pitchSet,
-          inversion: isInversion ? 1 : 0,
+          inversion: inversionNum,
           bassNote: bassPitch !== null ? CHROMATIC_SHARP[bassPitch] : rootNote,
           bassPitch: bassPitch,   // stored so callers can re-spell with key context
           confidence: Math.max(0, score),
         };
-        if (isInversion) {
+        if (inversionNum > 0 && bassPitch !== null) {
           best.slashName = `${best.name}/${CHROMATIC_SHARP[bassPitch]}`;
         }
       }
@@ -437,6 +448,12 @@ export function getCommonVoicing(rootPitch, quality) {
  * @param {number[]} frets  [-1=muted, 0=open, >0=fretted]
  * @returns {number}
  */
+function _ordinal(n) {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
 function countFingers(frets) {
   const frettedFrets = frets.filter(f => f > 0);
   if (frettedFrets.length === 0) return 0;
@@ -461,7 +478,7 @@ function _generateAlgorithmicVoicings(rootPitch, targetPitches, tuning, spanLimi
   const results = [];
 
   for (let bassString = 0; bassString <= 3; bassString++) {
-    for (let rootFret = 0; rootFret <= 12; rootFret++) {
+    for (let rootFret = 0; rootFret <= 20; rootFret++) {
       if (normalizePitch(tuning[bassString] + rootFret) !== rootPitch) continue;
 
       const frets   = new Array(6).fill(-1);
@@ -476,7 +493,10 @@ function _generateAlgorithmicVoicings(rootPitch, targetPitches, tuning, spanLimi
         let bestStr = -1, bestFret = -1, bestDist = Infinity;
         for (let s = bassString + 1; s < 6; s++) {
           if (usedStr.has(s)) continue;
-          for (let f = Math.max(0, rootFret - 1); f <= rootFret + spanLimit; f++) {
+          // Always include open string (f=0) plus the fretted window — this ensures
+          // baritone tunings can use open treble strings even when the bass root is high.
+          for (let f = 0; f <= rootFret + spanLimit; f++) {
+            if (f !== 0 && f < Math.max(1, rootFret - 1)) continue;
             if (normalizePitch(tuning[s] + f) === tp) {
               // Open strings are always preferred over fretted notes
               const dist = f === 0 ? -1 : Math.abs(f - rootFret);
@@ -496,7 +516,9 @@ function _generateAlgorithmicVoicings(rootPitch, targetPitches, tuning, spanLimi
         if (usedStr.has(s)) continue;
         let bestFret = -1, bestDist = Infinity;
         for (const tp of targetPitches) {
-          for (let f = Math.max(0, rootFret - 1); f <= rootFret + spanLimit; f++) {
+          // Always include open string (f=0) plus the fretted window
+          for (let f = 0; f <= rootFret + spanLimit; f++) {
+            if (f !== 0 && f < Math.max(1, rootFret - 1)) continue;
             if (normalizePitch(tuning[s] + f) === tp) {
               // Open strings are always preferred over fretted notes
               const dist = f === 0 ? -1 : Math.abs(f - rootFret);
@@ -543,7 +565,7 @@ function _generateAlgorithmicVoicings(rootPitch, targetPitches, tuning, spanLimi
       if (countFingers(frets) > 4) continue;
 
       const lowestFret = Math.min(...frets.filter(f => f > 0), Infinity);
-      const label = activeFrets.some(f => f === 0) ? 'Open' : `${lowestFret}th fret`;
+      const label = activeFrets.some(f => f === 0) ? 'Open' : `${_ordinal(lowestFret)} fret`;
       // Detect if the algorithmic shape happens to be a barre (2+ strings at minFret)
       const frettedOnly = frets.filter(f => f > 0);
       const minFretVal  = frettedOnly.length ? Math.min(...frettedOnly) : 0;
@@ -634,11 +656,14 @@ export function generateVoicings(rootPitch, quality, tuning) {
   }).sort((a, b) => {
     const openA = a.frets.filter(f => f === 0).length;
     const openB = b.frets.filter(f => f === 0).length;
-    return openB - openA;
+    if (openB !== openA) return openB - openA;
+    const minA = Math.min(...a.frets.filter(f => f > 0), Infinity);
+    const minB = Math.min(...b.frets.filter(f => f > 0), Infinity);
+    return minA - minB;
   }).map(v => ({
     ...v,
     difficulty: voicingDifficulty(v.frets, quality, v.isBarre ?? false),
-  })).slice(0, 8);
+  })).slice(0, 14);
 }
 
 /**
@@ -658,7 +683,7 @@ export function generateBarreVoicings(rootPitch, quality, tuning, overridePitche
 
   // Try barring with root on string 0 (E-shape) or string 1 (A-shape)
   for (let bassStr = 0; bassStr <= 1; bassStr++) {
-    for (let barFret = 1; barFret <= 12; barFret++) {
+    for (let barFret = 1; barFret <= 20; barFret++) {
       if (normalizePitch(tuning[bassStr] + barFret) !== rootPitch) continue;
 
       const frets = new Array(6).fill(-1);

@@ -25,9 +25,6 @@ const MOTION_DESC = {
   7: 'perfect 5th — strongest tonal motion',
 };
 
-// Persistent toggle state (survives re-renders within the same session)
-let _fullExpanded   = false; // all-chords mode
-let _subsetExpanded = false; // ctrl+click subset mode
 
 function describeRootMotion(semisUp) {
   const down  = 12 - semisUp;
@@ -121,7 +118,8 @@ function buildDetails(chords, key) {
   let html = '';
 
   if (chords.length >= 2) {
-    html += '<div class="ra-transitions">';
+    // Build raw transitions then collapse consecutive identical ones
+    const rawTransitions = [];
     for (let i = 0; i < chords.length - 1; i++) {
       const a = chords[i], b = chords[i + 1];
       const semis = normalizePitch(b.root - a.root);
@@ -144,9 +142,20 @@ function buildDetails(chords, key) {
         }
       }
 
+      const collapseKey = `${a.name}|${b.name}|${iname}|${dir}|${ct}|${commonNames}|${keyInfo}`;
+      if (rawTransitions.length > 0 && rawTransitions[rawTransitions.length - 1].collapseKey === collapseKey) {
+        rawTransitions[rawTransitions.length - 1].count++;
+      } else {
+        rawTransitions.push({ aName: a.name, bName: b.name, iname, dir, desc, ct, commonNames, keyInfo, collapseKey, count: 1 });
+      }
+    }
+
+    html += '<div class="ra-transitions">';
+    for (const { aName, bName, iname, dir, desc, ct, commonNames, keyInfo, count } of rawTransitions) {
+      const countBadge = count > 1 ? ` <span class="ra-trans-count">×${count}</span>` : '';
       html += `
         <div class="ra-transition-row">
-          <span class="ra-trans-pair"><strong>${a.name}</strong> → <strong>${b.name}</strong></span>
+          <span class="ra-trans-pair"><strong>${aName}</strong> → <strong>${bName}</strong>${countBadge}</span>
           <span class="ra-trans-motion">${iname} ${dir} — ${desc}</span>
           <span class="ra-trans-common">${ct > 0 ? `${ct} shared: <em>${commonNames}</em>` : 'no common tones'}</span>
           ${keyInfo ? `<span class="ra-trans-fn">${keyInfo}</span>` : ''}
@@ -178,8 +187,6 @@ export function renderRelationshipAnalyzer(key, progression, selectedIndices) {
 
   // ── Empty state ─────────────────────────────────────────────────────────────
   if (allChords.length === 0) {
-    _fullExpanded   = false;
-    _subsetExpanded = false;
     container.innerHTML = `
       <div class="ra-empty">
         <span class="ra-empty-icon">⇄</span>
@@ -194,7 +201,6 @@ export function renderRelationshipAnalyzer(key, progression, selectedIndices) {
     const chords = selectedIndices.map(i => progression[i]).filter(Boolean);
 
     const detailsHtml = buildDetails(chords, key);
-    const expanded    = _subsetExpanded;
 
     container.innerHTML = `
       <div class="ra-header">
@@ -202,18 +208,10 @@ export function renderRelationshipAnalyzer(key, progression, selectedIndices) {
         <span class="ra-hint">Analyzing ${chords.length} selected · Ctrl+click to change selection</span>
       </div>
       ${buildChordRow(chords, key)}
-      <button class="ra-toggle-btn" id="ra-toggle-subset">
-        ${expanded ? 'Hide Relationship ▴' : 'Show Relationship ▾'}
-      </button>
-      <div class="ra-details" id="ra-details-subset" style="display:${expanded ? '' : 'none'}">
+      <div class="ra-details" id="ra-details-subset">
         ${detailsHtml}
       </div>
     `;
-
-    container.querySelector('#ra-toggle-subset')?.addEventListener('click', () => {
-      _subsetExpanded = !_subsetExpanded;
-      renderRelationshipAnalyzer(key, progression, selectedIndices);
-    });
     return;
   }
 
@@ -240,24 +238,11 @@ export function renderRelationshipAnalyzer(key, progression, selectedIndices) {
   }
 
   const detailsHtml = buildDetails(allChords, key);
-  const expanded    = _fullExpanded;
 
   container.innerHTML = `
-    <div class="ra-header">
-      <span class="section-label" style="margin-bottom:0">Relationship Analysis</span>
-      <span class="ra-hint">Ctrl+click chord chips to analyze a specific subset</span>
-    </div>
     ${sectionRowsHtml}
-    <button class="ra-toggle-btn" id="ra-toggle-full">
-      ${expanded ? 'Hide Full Analysis ▴' : 'Show Full Song Analysis ▾'}
-    </button>
-    <div class="ra-details" id="ra-details-full" style="display:${expanded ? '' : 'none'}">
+    <div class="ra-details" id="ra-details-full">
       ${detailsHtml}
     </div>
   `;
-
-  container.querySelector('#ra-toggle-full')?.addEventListener('click', () => {
-    _fullExpanded = !_fullExpanded;
-    renderRelationshipAnalyzer(key, progression, selectedIndices);
-  });
 }
