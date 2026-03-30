@@ -1,8 +1,5 @@
 import { pitchToNote } from '../core/notes.js';
 
-// Persists across re-renders — user explicitly toggles
-let _keyExpanded = false;
-
 /**
  * Render the key detection panel.
  * @param {Array}         keyResults   - [{key, confidence}] sorted by confidence
@@ -11,10 +8,12 @@ let _keyExpanded = false;
  */
 export function renderKeyPanel(keyResults, activeKey, onKeyClick) {
   const container = document.getElementById('key-display');
+  const summary   = document.getElementById('key-header-summary');
   if (!container) return;
 
   if (!keyResults || keyResults.length === 0) {
     container.innerHTML = '<div class="key-placeholder">Select chords on the fretboard…</div>';
+    if (summary) summary.innerHTML = '';
     return;
   }
 
@@ -59,6 +58,13 @@ export function renderKeyPanel(keyResults, activeKey, onKeyClick) {
     ? `<div class="key-enharmonic" title="Enharmonically equivalent — same pitches, different spelling">(enharmonic: ${altName})</div>`
     : '';
 
+  // Update the collapsed header summary with key name + confidence
+  if (summary) {
+    const keyLabel = displayKey.isModal ? displayKey.rootNote : displayKey.shortName;
+    const qualLabel = displayKey.modeName ?? (displayKey.quality === 'major' ? 'Major' : 'Minor');
+    summary.innerHTML = `<span class="key-header-name">${keyLabel} ${qualLabel}</span><span class="key-header-pct">${pct}%</span>`;
+  }
+
   container.innerHTML = `
     <div class="key-summary-row">
       <div class="key-main">
@@ -67,47 +73,33 @@ export function renderKeyPanel(keyResults, activeKey, onKeyClick) {
         ${displayKey.isModal ? '<span class="key-mode-badge" title="Modal tonal center">Modal</span>' : ''}
         ${isOverridden ? '<span class="key-override-badge" title="Manually selected">override</span>' : ''}
       </div>
-      <button class="key-expand-btn" id="key-expand-btn" title="${_keyExpanded ? 'Hide details' : 'Show relative keys, possible keys & more'}">
-        ${_keyExpanded ? 'Hide ▲' : 'Details ▼'}
-      </button>
     </div>
 
-    <div class="key-confidence-bar">
-      <div class="key-confidence-fill" style="width:${pct}%"></div>
-    </div>
     <div class="key-confidence-label">Confidence: ${pct}%</div>
     ${enharmonicHtml}
 
-    ${_keyExpanded ? `
-      <div class="key-details-expanded">
-        <div class="key-relations">
-          <div class="key-relation">
-            <div class="key-relation-label">${displayKey.relativeLabel ?? ('Relative ' + displayKey.relativeQuality)}</div>
-            <div class="key-relation-value">${displayKey.relativeName}</div>
-          </div>
-          <div class="key-relation">
-            <div class="key-relation-label">V (Dominant)</div>
-            <div class="key-relation-value">${dominantNote}</div>
-          </div>
-          <div class="key-relation">
-            <div class="key-relation-label">IV (Subdominant)</div>
-            <div class="key-relation-value">${subdominantNote}</div>
-          </div>
+    <div class="key-details-expanded">
+      <div class="key-relations">
+        <div class="key-relation">
+          <div class="key-relation-label">${displayKey.relativeLabel ?? ('Relative ' + displayKey.relativeQuality)}</div>
+          <div class="key-relation-value">${displayKey.relativeName}</div>
         </div>
-        <div class="key-alt-header">
-          <span style="font-size:0.68rem; color:var(--text-hint)">Possible keys — click to switch:</span>
-          ${isOverridden ? `<button class="key-reset-btn" id="key-reset-btn" title="Revert to auto-detected key">↺ Auto-detect</button>` : ''}
+        <div class="key-relation">
+          <div class="key-relation-label">V (Dominant)</div>
+          <div class="key-relation-value">${dominantNote}</div>
         </div>
-        <div class="key-alternatives">${allChips}</div>
+        <div class="key-relation">
+          <div class="key-relation-label">IV (Subdominant)</div>
+          <div class="key-relation-value">${subdominantNote}</div>
+        </div>
       </div>
-    ` : ''}
+      <div class="key-alt-header">
+        <span style="font-size:0.68rem; color:var(--text-hint)">Possible keys — click to switch:</span>
+        ${isOverridden ? `<button class="key-reset-btn" id="key-reset-btn" title="Revert to auto-detected key">↺ Auto-detect</button>` : ''}
+      </div>
+      <div class="key-alternatives">${allChips}</div>
+    </div>
   `;
-
-  // Expand / collapse toggle
-  container.querySelector('#key-expand-btn')?.addEventListener('click', () => {
-    _keyExpanded = !_keyExpanded;
-    renderKeyPanel(keyResults, activeKey, onKeyClick);
-  });
 
   // Alt key chip clicks
   container.querySelectorAll('.key-alt-chip').forEach(chip => {

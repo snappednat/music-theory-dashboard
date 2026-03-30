@@ -1,4 +1,5 @@
 import { NOTE_SELECTOR_OPTIONS, CHROMATIC_SHARP } from '../core/notes.js';
+import { setTonePreset, getTonePresetName, TONE_PRESET_LABELS } from '../core/audio.js';
 
 export const TUNING_PRESETS = [
   { label: 'Standard (EADGBE)', tuning: [4, 9, 2, 7, 11, 4] },
@@ -24,7 +25,75 @@ export function init(onTuningChange, initialTuning) {
   _currentTuning  = [...initialTuning];
 
   _renderPresets();
+  _renderToneSelector();
   _renderStringSelectors();
+  _initPopovers();
+}
+
+function _initPopovers() {
+  const pairs = [
+    { btnId: 'tuning-icon-btn', popId: 'tuning-popover', otherIds: ['tone-popover', 'capo-popover'],   otherBtnIds: ['tone-icon-btn', 'capo-icon-btn']   },
+    { btnId: 'tone-icon-btn',   popId: 'tone-popover',   otherIds: ['tuning-popover', 'capo-popover'], otherBtnIds: ['tuning-icon-btn', 'capo-icon-btn'] },
+    { btnId: 'capo-icon-btn',   popId: 'capo-popover',   otherIds: ['tuning-popover', 'tone-popover'], otherBtnIds: ['tuning-icon-btn', 'tone-icon-btn'] },
+  ];
+
+  pairs.forEach(({ btnId, popId, otherIds, otherBtnIds }) => {
+    const btn = document.getElementById(btnId);
+    const pop = document.getElementById(popId);
+    if (!btn || !pop) return;
+
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const opening = pop.hidden;
+      // Close all others
+      otherIds.forEach(id => { const el = document.getElementById(id); if (el) el.hidden = true; });
+      otherBtnIds.forEach(id => document.getElementById(id)?.classList.remove('open'));
+      // Toggle self — all three buttons get the .open ring while their popover is open
+      pop.hidden = !opening;
+      btn.classList.toggle('open', opening);
+      if (opening) {
+        // Position using fixed coords so it escapes any overflow:hidden ancestor
+        const rect = btn.getBoundingClientRect();
+        pop.style.top  = (rect.bottom + 8) + 'px';
+        pop.style.left = rect.left + 'px';
+      }
+    });
+
+    // Clicks inside the popover stay inside — don't trigger the outside-close handler
+    pop.addEventListener('click', e => e.stopPropagation());
+  });
+
+  // Clicking anywhere outside closes all popovers
+  document.addEventListener('click', () => {
+    document.getElementById('tuning-popover').hidden = true;
+    document.getElementById('tone-popover').hidden   = true;
+    const capoPop = document.getElementById('capo-popover');
+    if (capoPop) capoPop.hidden = true;
+    document.getElementById('tuning-icon-btn')?.classList.remove('open');
+    document.getElementById('tone-icon-btn')?.classList.remove('open');
+    document.getElementById('capo-icon-btn')?.classList.remove('open');
+  });
+}
+
+function _renderToneSelector() {
+  const container = document.getElementById('tone-selector');
+  if (!container) return;
+  const active = getTonePresetName();
+  container.innerHTML = `
+    <div class="tuning-tone-row">
+      <span class="string-tuning-label" style="margin-bottom:3px">Tone</span>
+      <div class="tuning-presets" style="margin:0">
+        ${Object.entries(TONE_PRESET_LABELS).map(([key, label]) =>
+          `<button class="tuning-preset-btn tone-btn${key === active ? ' active' : ''}" data-tone="${key}">${label}</button>`
+        ).join('')}
+      </div>
+    </div>`;
+  container.querySelectorAll('.tone-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      setTonePreset(btn.dataset.tone);
+      container.querySelectorAll('.tone-btn').forEach(b => b.classList.toggle('active', b === btn));
+    });
+  });
 }
 
 function _renderPresets() {

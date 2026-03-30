@@ -5,14 +5,31 @@
  * Clicking a card loads that voicing onto the main fretboard.
  */
 
-import { generateVoicings } from '../core/chords.js';
+import { generateVoicings, CHORD_FORMULAS } from '../core/chords.js';
 import { CHROMATIC_SHARP, normalizePitch } from '../core/notes.js';
 import { TUNING_PRESETS } from './tuning.js';
 import { playChord } from '../core/audio.js';
 import { scoreVoiceLeading, vlScoreColor } from '../core/voiceLeading.js';
+import { SEMITONE_TO_INTERVAL_NAME } from '../core/intervals.js';
 
 // Track the currently-selected voicing key so we can re-highlight after re-render
 let _activeKey = null;
+
+/**
+ * Build a row of chord-tone pills: "G (Root) · B (M3) · D (P5)"
+ */
+function buildChordToneRow(root, quality) {
+  const formula = CHORD_FORMULAS[quality];
+  if (!formula) return '';
+  const pills = formula.map((semis, i) => {
+    const pitch = ((root + semis) % 12 + 12) % 12;
+    const noteName = CHROMATIC_SHARP[pitch];
+    const intervalLabel = SEMITONE_TO_INTERVAL_NAME[(semis % 12 + 12) % 12] ?? '';
+    const isRoot = i === 0;
+    return `<span class="ve-tone-pill${isRoot ? ' ve-tone-root' : ''}">${noteName}<span class="ve-tone-interval">${isRoot ? 'Root' : intervalLabel}</span></span>`;
+  });
+  return `<div class="ve-chord-tones">${pills.join('<span class="ve-tone-sep">·</span>')}</div>`;
+}
 
 /**
  * Render the voicing explorer panel.
@@ -39,22 +56,21 @@ export function renderVoicingExplorer(chord, tuning, onSelect, currentFrets = nu
     return;
   }
 
-  // Filter by difficulty (cumulative: beginner ⊂ intermediate ⊂ advanced)
-  const _DIFF_RANK = { beginner: 0, intermediate: 1, advanced: 2 };
+  // Filter by tier (cumulative: basic ⊂ color ⊂ advanced)
+  const _DIFF_RANK = { basic: 0, color: 1, advanced: 2 };
   const maxRank = _DIFF_RANK[difficultyFilter] ?? 2;
   let voicings = allVoicings.filter(v => (_DIFF_RANK[v.difficulty ?? 'advanced']) <= maxRank);
 
-  // If no voicings match the selected level, show an informative empty state —
-  // never fall back to a harder voicing, as that defeats the purpose of the filter.
+  // If no voicings match the selected tier, show an informative empty state.
   if (voicings.length === 0) {
-    const levelLabels = { beginner: 'Beginner', intermediate: 'Intermediate', advanced: 'Advanced' };
-    const nextLevel   = difficultyFilter === 'beginner' ? 'Intermediate' : 'Advanced';
+    const levelLabels = { basic: 'Basic', color: 'Color', advanced: 'Advanced' };
+    const nextLevel   = difficultyFilter === 'basic' ? 'Color' : 'Advanced';
     container.style.display = '';
     container.innerHTML = `
-      <div class="section-label">Voicings — ${chord.name}</div>
+      <div class="section-label">Voicings — ${chord.slashName ?? chord.name}</div>
       <div class="ve-no-voicing">
-        No open-position ${levelLabels[difficultyFilter] ?? difficultyFilter} shape available for <strong>${chord.name}</strong>.
-        Switch to <strong>${nextLevel}</strong> to see barre chord shapes.
+        No ${levelLabels[difficultyFilter] ?? difficultyFilter} shape available for <strong>${chord.slashName ?? chord.name}</strong>.
+        Switch to <strong>${nextLevel}</strong> to see voicings.
       </div>`;
     return;
   }
@@ -105,7 +121,7 @@ export function renderVoicingExplorer(chord, tuning, onSelect, currentFrets = nu
   const fallbackNote = '';
 
   container.innerHTML = `
-    <div class="section-label">Voicings — ${chord.name}${tuningBadge}</div>
+    <div class="section-label">Voicings — ${chord.slashName ?? chord.name}${tuningBadge}</div>
     ${fallbackNote}
     <div class="ve-cards" id="ve-cards-row">${cardsHtml}</div>
   `;
@@ -148,8 +164,8 @@ export function renderAltVoicings(chord, tuning, onSelect, currentFrets = null, 
   const allVoicings = generateVoicings(chord.root, chord.quality, tuning);
   if (!allVoicings?.length) { container.style.display = 'none'; return; }
 
-  // Filter by difficulty; fall back to all voicings if none match
-  const _RANK = { beginner: 0, intermediate: 1, advanced: 2 };
+  // Filter by tier; fall back to all voicings if none match
+  const _RANK = { basic: 0, color: 1, advanced: 2 };
   const maxRank = _RANK[difficultyFilter] ?? 2;
   const filtered = allVoicings.filter(v => (_RANK[v.difficulty ?? 'advanced']) <= maxRank);
   const voicings = filtered.length ? filtered : allVoicings;
@@ -171,7 +187,7 @@ export function renderAltVoicings(chord, tuning, onSelect, currentFrets = null, 
   container.style.display = '';
   container.innerHTML = `
     <div class="alt-voicings-header">
-      <span class="section-label">Alternate Voicings — ${chord.name}</span>
+      <span class="section-label">Alternate Voicings — ${chord.slashName ?? chord.name}</span>
     </div>
     <div class="ve-cards">${cards}</div>
   `;
@@ -196,8 +212,10 @@ export function renderAltVoicings(chord, tuning, onSelect, currentFrets = null, 
  * Exported so other panels (e.g. chordIdeas) can reuse the same visual.
  */
 export function buildChordDiagramHtml(frets, tuning, rootPitch) {
-  const W = 78, H = 102;
-  const PAD_L = 10, PAD_R = 10, PAD_T = 22, PAD_B = 14;
+  const W = 88, H = 102;
+  const PAD_L = 20, PAD_R = 10, PAD_T = 22, PAD_B = 14;
+  // boardW = W - PAD_L - PAD_R = 58px (unchanged).
+  // PAD_L increased by 10 to give the fret-number label room to clear the leftmost dot.
 
   // Find the fret window to display
   const activeFrets = frets.filter(f => f > 0);
@@ -223,8 +241,11 @@ export function buildChordDiagramHtml(frets, tuning, rootPitch) {
   if (showNut) {
     parts.push(`<rect x="${PAD_L}" y="${PAD_T - 3}" width="${boardW}" height="4" fill="#c8a96a" rx="1"/>`);
   } else {
-    // Fret number label on left
-    parts.push(`<text x="${PAD_L - 3}" y="${PAD_T + rowH * 0.65}" font-size="8" fill="#888" text-anchor="end">${startFret}</text>`);
+    // Fret number label — positioned so its right edge clears the leftmost dot by 3px.
+    // dotR = rowH * 0.34 (same radius used when drawing finger dots below).
+    const dotR = rowH * 0.34;
+    const fretLabelX = (PAD_L - dotR - 3).toFixed(1);
+    parts.push(`<text x="${fretLabelX}" y="${PAD_T + rowH * 0.65}" font-size="8" fill="#888" text-anchor="end">${startFret}</text>`);
   }
 
   // Fret lines
@@ -267,5 +288,5 @@ export function buildChordDiagramHtml(frets, tuning, rootPitch) {
     parts.push(`<circle cx="${x}" cy="${y}" r="${r.toFixed(1)}" fill="${fill}"/>`);
   }
 
-  return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" class="ve-diagram">${parts.join('')}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" overflow="visible" class="ve-diagram">${parts.join('')}</svg>`;
 }

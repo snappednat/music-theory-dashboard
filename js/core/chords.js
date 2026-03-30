@@ -180,60 +180,36 @@ export const CHORD_QUALITY_LABELS = {
 
 // ─── Difficulty classification ────────────────────────────────────────────────
 
-const _DIFF_RANK = { beginner: 0, intermediate: 1, advanced: 2 };
-
-/** Map chord quality → minimum difficulty level for that sound. */
+/** Map chord quality → tier: 'basic' | 'color' | 'advanced'.
+ *  Tier communicates "how far out is this chord?" not skill level.
+ *  Anything not listed defaults to 'advanced'. */
 export const QUALITY_DIFFICULTY = {
-  // Beginner — simple, commonly taught first
-  maj:'beginner', min:'beginner', sus2:'beginner', sus4:'beginner',
-  add9:'beginner', pow5:'beginner', minadd9:'beginner',
-  // Intermediate — 7ths, 6ths, 9ths, basic extensions
-  dom7:'intermediate', maj7:'intermediate', min7:'intermediate',
-  dim:'intermediate',  dim7:'intermediate', hdim7:'intermediate', aug:'intermediate',
-  maj6:'intermediate', min6:'intermediate', dom9:'intermediate',
-  maj9:'intermediate', min9:'intermediate', minmaj7:'intermediate',
-  maj6add9:'intermediate', augmaj7:'intermediate', dom7sus4:'intermediate',
-  dom7sus2:'intermediate', maj7sus2:'intermediate', maj7sus4:'intermediate',
-  add4:'intermediate', minadd4:'intermediate', sus2sus4:'intermediate',
-  maj11:'intermediate', min11:'intermediate', dom11:'intermediate',
-  min13:'intermediate', maj13:'intermediate', dom13:'intermediate',
-  majb5:'intermediate', dom13sus4:'intermediate', minmaj9:'intermediate',
-  // Everything not listed → defaults to 'advanced'
+  // Basic — core triads and 7th essentials
+  maj:'basic', min:'basic', sus2:'basic', sus4:'basic', pow5:'basic',
+  dom7:'basic', maj7:'basic', min7:'basic',
+  // Color — expressive extensions and common variations
+  add9:'color', minadd9:'color',
+  dim:'color', aug:'color', hdim7:'color',
+  maj6:'color', min6:'color',
+  dom9:'color', maj9:'color', min9:'color',
+  minmaj7:'color', maj6add9:'color',
+  dom7sus4:'color', dom7sus2:'color', maj7sus2:'color', maj7sus4:'color',
+  add4:'color', minadd4:'color', sus2sus4:'color',
+  maj11:'color', min11:'color', dom11:'color',
+  min13:'color', maj13:'color', dom13:'color',
+  majb5:'color', dom13sus4:'color', minmaj9:'color',
+  dom7no5:'color', maj7no5:'color', min7no5:'color',
+  dom9no5:'color', maj9no5:'color', min9no5:'color', min11no5:'color',
+  // Advanced — dim7, augmaj7, and all altered/exotic qualities (rest default to 'advanced')
+  dim7:'advanced', augmaj7:'advanced',
 };
 
-/** Classify a voicing shape by mechanical difficulty (finger count, span, barre). */
-function _mechanicsDifficulty(frets, isBarre) {
-  const frettedOnly = frets.filter(f => f > 0);
-  const fingers     = countFingers(frets);
-  const span        = frettedOnly.length > 1
-    ? Math.max(...frettedOnly) - Math.min(...frettedOnly) : 0;
-  const hasOpen     = frets.some(f => f === 0);
-  // Beginner: open-position chord (≥1 open string), ≤4 effective fingers, span ≤2.
-  // 4-finger open chords like C7 (x32310) are standard beginner guitar chords.
-  // Partial barres on open chords (e.g. A major x02220) are still beginner-accessible.
-  if (hasOpen && fingers <= 4 && span <= 2) return 'beginner';
-  // Intermediate: full barre chord or closed position ≤4 fingers with span ≤3
-  if (isBarre || (fingers <= 4 && span <= 3)) return 'intermediate';
-  return 'advanced';
-}
-
 /**
- * Return the difficulty rating for a voicing.
- * For open-position shapes, mechanics alone determine difficulty — a G7 or Am7
- * in open position is a beginner chord regardless of quality name.
- * For closed-position shapes, quality provides a floor (dom7b9 stays advanced).
- * @export so voicingExplorer can reference it if needed.
+ * Return the tier for a voicing based solely on chord quality.
+ * Tier = 'basic' | 'color' | 'advanced'.
  */
 export function voicingDifficulty(frets, quality, isBarre = false) {
-  const mechRank = _DIFF_RANK[_mechanicsDifficulty(frets, isBarre)];
-  const hasOpen  = frets.some(f => f === 0);
-
-  // Open-position voicings: shape difficulty = mechanics only.
-  if (hasOpen) return ['beginner', 'intermediate', 'advanced'][mechRank];
-
-  // Closed-position shapes: quality rank provides a floor.
-  const qualRank = _DIFF_RANK[QUALITY_DIFFICULTY[quality] ?? 'advanced'];
-  return ['beginner', 'intermediate', 'advanced'][Math.max(qualRank, mechRank)];
+  return QUALITY_DIFFICULTY[quality] ?? 'advanced';
 }
 
 // ─── Chord Name Parser ────────────────────────────────────────────────────────
@@ -335,13 +311,15 @@ export function buildChord(rootPitch, quality) {
  * @param {number[]} selectedFrets  [-1=muted, 0=open, 1-22=fret]; index 0 = low string
  * @param {number[]} tuning         pitch class per string; index 0 = low string
  */
-export function fretboardToPitches(selectedFrets, tuning) {
+export function fretboardToPitches(selectedFrets, tuning, capoFret = 0) {
   const allPitches = [];
   let bassPitch = null;
 
   for (let i = 0; i < 6; i++) {
     if (selectedFrets[i] === -1) continue;
-    const pitch = normalizePitch(tuning[i] + selectedFrets[i]);
+    // Open strings (fret 0) sound at the capo position when a capo is active
+    const effectiveFret = (selectedFrets[i] === 0 && capoFret > 0) ? capoFret : selectedFrets[i];
+    const pitch = normalizePitch(tuning[i] + effectiveFret);
     allPitches.push(pitch);
     if (bassPitch === null) bassPitch = pitch; // lowest string first
   }
@@ -395,7 +373,16 @@ export function identifyChord(pitchSet, bassPitch = null) {
       if (score > bestScore) {
         bestScore = score;
         const rootNote = CHROMATIC_SHARP[candidateRoot];
-        const isInversion = bassPitch !== null && bassPitch !== candidateRoot;
+        // Determine inversion type: 0=root, 1=first (3rd in bass), 2=second (5th in bass)
+        let inversionNum = 0;
+        if (bassPitch !== null && bassPitch !== ((candidateRoot % 12 + 12) % 12)) {
+          const thirdPitch = bassPitch !== null ? ((candidateRoot + (formula[1] ?? 0)) % 12 + 12) % 12 : null;
+          const fifthPitch = bassPitch !== null && formula[2] != null ? ((candidateRoot + formula[2]) % 12 + 12) % 12 : null;
+          const bpNorm = ((bassPitch % 12) + 12) % 12;
+          if (thirdPitch !== null && bpNorm === thirdPitch) inversionNum = 1;
+          else if (fifthPitch !== null && bpNorm === fifthPitch) inversionNum = 2;
+          else inversionNum = 1; // non-chord-tone bass — treat as slash/first for display
+        }
         best = {
           root: candidateRoot,
           rootNote,
@@ -403,12 +390,12 @@ export function identifyChord(pitchSet, bassPitch = null) {
           name: formatChordName(rootNote, quality),
           pitches: buildChord(candidateRoot, quality),
           actualPitches: pitchSet,
-          inversion: isInversion ? 1 : 0,
+          inversion: inversionNum,
           bassNote: bassPitch !== null ? CHROMATIC_SHARP[bassPitch] : rootNote,
           bassPitch: bassPitch,   // stored so callers can re-spell with key context
           confidence: Math.max(0, score),
         };
-        if (isInversion) {
+        if (inversionNum > 0 && bassPitch !== null) {
           best.slashName = `${best.name}/${CHROMATIC_SHARP[bassPitch]}`;
         }
       }
@@ -461,6 +448,12 @@ export function getCommonVoicing(rootPitch, quality) {
  * @param {number[]} frets  [-1=muted, 0=open, >0=fretted]
  * @returns {number}
  */
+function _ordinal(n) {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
 function countFingers(frets) {
   const frettedFrets = frets.filter(f => f > 0);
   if (frettedFrets.length === 0) return 0;
@@ -485,7 +478,7 @@ function _generateAlgorithmicVoicings(rootPitch, targetPitches, tuning, spanLimi
   const results = [];
 
   for (let bassString = 0; bassString <= 3; bassString++) {
-    for (let rootFret = 0; rootFret <= 12; rootFret++) {
+    for (let rootFret = 0; rootFret <= 20; rootFret++) {
       if (normalizePitch(tuning[bassString] + rootFret) !== rootPitch) continue;
 
       const frets   = new Array(6).fill(-1);
@@ -500,7 +493,10 @@ function _generateAlgorithmicVoicings(rootPitch, targetPitches, tuning, spanLimi
         let bestStr = -1, bestFret = -1, bestDist = Infinity;
         for (let s = bassString + 1; s < 6; s++) {
           if (usedStr.has(s)) continue;
-          for (let f = Math.max(0, rootFret - 1); f <= rootFret + spanLimit; f++) {
+          // Always include open string (f=0) plus the fretted window — this ensures
+          // baritone tunings can use open treble strings even when the bass root is high.
+          for (let f = 0; f <= rootFret + spanLimit; f++) {
+            if (f !== 0 && f < Math.max(1, rootFret - 1)) continue;
             if (normalizePitch(tuning[s] + f) === tp) {
               // Open strings are always preferred over fretted notes
               const dist = f === 0 ? -1 : Math.abs(f - rootFret);
@@ -520,7 +516,9 @@ function _generateAlgorithmicVoicings(rootPitch, targetPitches, tuning, spanLimi
         if (usedStr.has(s)) continue;
         let bestFret = -1, bestDist = Infinity;
         for (const tp of targetPitches) {
-          for (let f = Math.max(0, rootFret - 1); f <= rootFret + spanLimit; f++) {
+          // Always include open string (f=0) plus the fretted window
+          for (let f = 0; f <= rootFret + spanLimit; f++) {
+            if (f !== 0 && f < Math.max(1, rootFret - 1)) continue;
             if (normalizePitch(tuning[s] + f) === tp) {
               // Open strings are always preferred over fretted notes
               const dist = f === 0 ? -1 : Math.abs(f - rootFret);
@@ -567,7 +565,7 @@ function _generateAlgorithmicVoicings(rootPitch, targetPitches, tuning, spanLimi
       if (countFingers(frets) > 4) continue;
 
       const lowestFret = Math.min(...frets.filter(f => f > 0), Infinity);
-      const label = activeFrets.some(f => f === 0) ? 'Open' : `${lowestFret}th fret`;
+      const label = activeFrets.some(f => f === 0) ? 'Open' : `${_ordinal(lowestFret)} fret`;
       // Detect if the algorithmic shape happens to be a barre (2+ strings at minFret)
       const frettedOnly = frets.filter(f => f > 0);
       const minFretVal  = frettedOnly.length ? Math.min(...frettedOnly) : 0;
@@ -658,11 +656,14 @@ export function generateVoicings(rootPitch, quality, tuning) {
   }).sort((a, b) => {
     const openA = a.frets.filter(f => f === 0).length;
     const openB = b.frets.filter(f => f === 0).length;
-    return openB - openA;
+    if (openB !== openA) return openB - openA;
+    const minA = Math.min(...a.frets.filter(f => f > 0), Infinity);
+    const minB = Math.min(...b.frets.filter(f => f > 0), Infinity);
+    return minA - minB;
   }).map(v => ({
     ...v,
     difficulty: voicingDifficulty(v.frets, quality, v.isBarre ?? false),
-  })).slice(0, 8);
+  })).slice(0, 14);
 }
 
 /**
@@ -682,7 +683,7 @@ export function generateBarreVoicings(rootPitch, quality, tuning, overridePitche
 
   // Try barring with root on string 0 (E-shape) or string 1 (A-shape)
   for (let bassStr = 0; bassStr <= 1; bassStr++) {
-    for (let barFret = 1; barFret <= 12; barFret++) {
+    for (let barFret = 1; barFret <= 20; barFret++) {
       if (normalizePitch(tuning[bassStr] + barFret) !== rootPitch) continue;
 
       const frets = new Array(6).fill(-1);

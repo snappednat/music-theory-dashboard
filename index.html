@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Guitar Music Theory Dashboard</title>
+  <title>Riffly - Actionable Guitar Theory</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Barlow+Semi+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles/main.css?v=4">
-  <link rel="stylesheet" href="styles/fretboard.css?v=3">
-  <link rel="stylesheet" href="styles/panels.css?v=11">
-  <link rel="stylesheet" href="styles/circle-of-fifths.css?v=2">
+  <link rel="stylesheet" href="styles/main.css?v=5">
+  <link rel="stylesheet" href="styles/fretboard.css?v=4">
+  <link rel="stylesheet" href="styles/panels.css?v=12">
+  <link rel="stylesheet" href="styles/circle-of-fifths.css?v=3">
 </head>
 <body>
   <div class="dashboard">
@@ -18,11 +18,14 @@
     <!-- ── Header ── -->
     <header class="header-bar">
       <div class="header-title">
-        <span class="header-icon">🎸</span>
-        <h1>Guitar Music Theory Dashboard</h1>
+        <img src="assets/logo-riffly.png" alt="Riffly" class="header-logo">
+        <button id="btn-theory-modal" class="btn btn-ghost header-theory-btn">Explore Theory</button>
       </div>
       <div class="header-actions">
-        <button id="btn-glossary" class="btn btn-ghost">📖 Glossary</button>
+        <button id="btn-instructions" class="btn btn-ghost">Instructions</button>
+        <button id="btn-glossary" class="btn btn-ghost">Glossary</button>
+        <button id="btn-export-progression" class="btn btn-ghost">Export</button>
+        <button id="btn-templates" class="btn btn-ghost">Load Template</button>
         <div class="header-actions-sep"></div>
         <button id="btn-clear-progression" class="btn btn-ghost">Clear Progression</button>
         <button id="btn-clear-all" class="btn btn-danger" title="Removes all chords and resets key detection">Clear All</button>
@@ -32,29 +35,18 @@
     <div class="dashboard-body">
 
       <!-- ═══════════════════════════════════════════════
-           LEFT COLUMN — Instrument & Current Chord
+           LEFT COLUMN — Instrument, Progression, Key
            ═══════════════════════════════════════════════ -->
       <div class="dashboard-col-left">
 
-        <!-- ── Tuning Controls ── -->
-        <section class="tuning-section panel" id="tuning-section">
-          <button class="panel-collapse-header" aria-expanded="false" aria-controls="tuning-body">
-            <span class="section-label">Tuning</span>
-            <span class="panel-chevron">▶</span>
-          </button>
-          <div class="panel-collapsible-body" id="tuning-body" style="display:none">
-            <div class="tuning-presets" id="tuning-presets">
-              <!-- Preset buttons injected by tuning.js -->
-            </div>
-            <div class="tuning-strings" id="tuning-strings">
-              <!-- Per-string selectors injected by tuning.js -->
-            </div>
-          </div>
-        </section>
+        <!-- ── Section 1: Fretboard (with Tuning inside) ── -->
+        <section class="fretboard-section panel panel-primary" id="fretboard-section">
 
-        <!-- ── Fretboard ── -->
-        <section class="fretboard-section panel-primary" id="fretboard-section">
-          <div id="fretboard-chord-label" class="fb-chord-label" style="display:none"></div>
+          <!-- ── Fretboard header: chord name centred ── -->
+          <div class="fb-header-row">
+            <div id="fretboard-chord-label" class="fb-chord-label"></div>
+          </div><!-- /.fb-header-row -->
+
           <div id="fretboard-container">
             <!-- Static fretboard — replaced by fretboard.js when JS runs -->
             <svg id="fretboard-svg" viewBox="0 0 920 220" xmlns="http://www.w3.org/2000/svg">
@@ -111,13 +103,66 @@
               <text class="fb-fret-label" x="493.86" y="196">12</text>
             </svg>
           </div>
-          <!-- Shape shift controls — hidden until a chord is on the fretboard -->
-          <div class="shape-shift-bar" id="shape-shift-bar" style="display:none">
-            <span class="shape-shift-label">MOVE SHAPE</span>
+          <!-- Move Shape row — centred directly below fretboard -->
+          <div class="move-shape-row" id="move-shape-row">
+            <span class="shape-shift-label">Move Shape</span>
             <button class="shape-shift-btn" id="btn-shift-down" title="Move shape toward nut (lower pitch)">↓ Nut</button>
             <span class="shape-shift-pos" id="shape-shift-pos">Open</span>
             <button class="shape-shift-btn" id="btn-shift-up" title="Move shape up the neck (higher pitch)">Up Neck ↑</button>
           </div>
+
+          <!-- Icon bar — Tuning | Capo | Tone equally distributed -->
+          <div class="shape-shift-bar" id="shape-shift-bar">
+
+            <!-- Left: Tuning -->
+            <div class="shape-shift-left">
+              <div class="fb-icon-wrap">
+                <button class="fb-icon-btn" id="tuning-icon-btn" title="Tuning settings">
+                  <img src="assets/icon-tuning.png" alt="Tuning" width="44" height="44">
+                </button>
+                <div class="fb-popover" id="tuning-popover" hidden>
+                  <div class="tuning-presets" id="tuning-presets"></div>
+                  <div class="tuning-strings"  id="tuning-strings"></div>
+                </div>
+              </div>
+              <span class="fb-icon-label">Tuning</span>
+            </div>
+
+            <!-- Centre: Capo -->
+            <div class="shape-shift-center">
+              <div class="fb-icon-wrap">
+                <button class="fb-icon-btn" id="capo-icon-btn" title="Capo settings">
+                  <img src="assets/icon-capo.png" alt="Capo" width="44" height="44">
+                </button>
+                <div class="fb-popover" id="capo-popover" hidden>
+                  <div class="capo-popover-inner">
+                    <div class="capo-pos-row">
+                      <button class="shape-shift-btn" id="btn-capo-down" title="Move capo toward nut">↓ Nut</button>
+                      <span class="shape-shift-pos" id="capo-pos-display">1fr</span>
+                      <button class="shape-shift-btn" id="btn-capo-up" title="Move capo up the neck">Up Neck ↑</button>
+                    </div>
+                    <button class="tuning-apply-btn" id="btn-capo-apply">Apply</button>
+                    <button class="capo-remove-btn" id="btn-remove-capo" hidden>✕ Remove Capo</button>
+                  </div>
+                </div>
+              </div>
+              <span class="fb-icon-label">Capo</span>
+            </div>
+
+            <!-- Right: Tone -->
+            <div class="shape-shift-right">
+              <div class="fb-icon-wrap">
+                <button class="fb-icon-btn" id="tone-icon-btn" title="Tone settings">
+                  <img src="assets/icon-tone.png" alt="Tone" width="44" height="44">
+                </button>
+                <div class="fb-popover" id="tone-popover" hidden>
+                  <div id="tone-selector"></div>
+                </div>
+              </div>
+              <span class="fb-icon-label">Tone</span>
+            </div>
+
+          </div><!-- /.shape-shift-bar -->
 
           <div class="fretboard-controls">
             <div class="tab-input-group">
@@ -127,112 +172,184 @@
             </div>
             <div class="fretboard-actions">
               <button id="btn-play-current" class="btn btn-ghost">▶ Play</button>
-              <button id="btn-add-chord" class="btn btn-accent">+ Add to Progression</button>
+              <button id="btn-add-chord" class="btn-action-img" title="Add to Progression"><img src="assets/icon-add-to-progression.png" alt="Add to Progression" class="btn-action-img-src"></button>
             </div>
           </div>
+
         </section>
 
-        <!-- ── Detected Key ── -->
-        <section class="key-panel panel panel-primary" id="key-panel">
-          <div class="section-label">Detected Key</div>
-          <div id="key-display">
-            <div class="key-placeholder">Select chords on the fretboard…</div>
-          </div>
-        </section>
-
-        <!-- ── Chord Progression ── -->
+        <!-- ── Section 2: Chord Progression ── -->
         <section class="progression-section panel panel-primary" id="progression-section">
           <div class="prog-header">
             <div class="prog-header-left">
-              <div class="section-label">Chord Progression <span class="hint">(click to reload, Ctrl+click to compare)</span></div>
+              <div class="panel-title-row">
+                <img src="assets/icon-chord-progression.png" alt="" class="panel-title-icon">
+                <div class="section-label">Chord Progression <span class="hint">(Click to View, Double Click to Add)</span></div>
+              </div>
               <button id="btn-play-progression" class="btn btn-ghost btn-sm prog-play-btn" style="display:none" title="Play active section">▶ Play</button>
-              <select id="form-template-select" class="form-template-select" title="Start from a template">
-                <option value="">Start from Template…</option>
-              </select>
             </div>
             <div class="section-tabs" id="section-tabs"></div>
           </div>
-          <div id="pattern-badge" class="pattern-badge" style="display:none"></div>
           <div class="chord-chips" id="chord-chips">
             <span class="chord-chips-empty">No chords yet — select a chord on the fretboard and click <strong>+ Add to Progression</strong>.</span>
           </div>
-          <div id="progression-story" class="progression-story">
-            <span class="story-placeholder">Add chords to see a live progression analysis…</span>
+
+          <!-- Harmony at a Glance — collapsible -->
+          <div class="panel-section-divider"></div>
+          <button class="panel-collapse-header" aria-expanded="false" aria-controls="harmony-body">
+            <span class="section-label" style="margin-bottom:0">Harmony at a Glance</span>
+            <span class="panel-chevron">▶</span>
+          </button>
+          <div class="panel-collapsible-body" id="harmony-body" style="display:none">
+            <div id="progression-story" class="progression-story">
+              <span class="story-placeholder">Add chords to see a live progression analysis…</span>
+            </div>
           </div>
-          <button id="btn-theory-modal" class="btn-theory-open">♩ Explore Theory</button>
+
+          <!-- Relationship Analysis — collapsible -->
+          <div class="panel-section-divider"></div>
+          <button class="panel-collapse-header" aria-expanded="false" aria-controls="relationship-body">
+            <span class="section-label" style="margin-bottom:0">Relationship Analysis</span>
+            <span class="panel-chevron">▶</span>
+          </button>
+          <div class="panel-collapsible-body" id="relationship-body" style="display:none">
+            <section class="ra-panel panel-analysis" id="relationship-analyzer">
+              <div class="ra-empty">
+                <span class="ra-empty-icon">⇄</span>
+                <span>Add chords to your progression to see relationship analysis.</span>
+              </div>
+            </section>
+          </div>
+          <div id="pattern-badge" class="pattern-badge" style="display:none"></div>
         </section>
 
-        <!-- ── Current Chord ── -->
-        <section class="chord-info-panel panel" id="chord-info-panel">
-          <div class="section-label">Current Chord</div>
-          <div id="chord-display">
-            <div class="key-placeholder">Click frets to build a chord…</div>
+        <!-- ── Section 3: Circle of Fifths (moved here from right column) ── -->
+        <section class="circle-section panel" id="circle-section">
+          <div class="cof-panel-header-row">
+            <button class="panel-collapse-header" aria-expanded="true" aria-controls="circle-body">
+              <span class="panel-title-row">
+                <img src="assets/icon-circle-5ths.png" alt="" class="panel-title-icon">
+                <span class="section-label" style="margin-bottom:0">Circle of Fifths</span>
+              </span>
+              <span class="panel-chevron">▼</span>
+            </button>
+            <button class="cof-info-btn" id="btn-cof-info" title="How to use the Circle of Fifths" aria-expanded="false">ⓘ</button>
           </div>
-          <button id="btn-replace-chord" class="btn btn-replace" style="display:none">⇄ Replace in Progression</button>
-        </section>
-
-        <!-- ── Diatonic Chord Suggestions ── -->
-        <section class="suggestions-section panel" id="suggestions-section">
-          <div class="section-label">Diatonic Chords in Key</div>
-          <div class="suggestions-grid" id="suggestions-grid">
-            <div class="key-placeholder">Detect a key to see chord suggestions…</div>
+          <div class="panel-collapsible-body" id="circle-body">
+            <div id="cof-instructions" class="cof-instructions" style="display:none">
+              <strong>How to use the Circle of Fifths</strong>
+              <ul>
+                <li><strong>Click any segment</strong> to explore that key — see its chords, key signature, and borrowed-chord colours.</li>
+                <li>Click <strong>"Set as Key"</strong> in the info drawer to apply it as your active key.</li>
+                <li><strong>Shift-click</strong> two segments to compare keys — shared chords and distance between them.</li>
+                <li><strong>Outer ring</strong> = Major keys · <strong>Inner ring</strong> = their relative Minor keys.</li>
+                <li>Adjacent segments share the most notes and move smoothly; opposite segments create maximum contrast.</li>
+                <li><strong>Numbered badges</strong> outside the ring show which chord in your progression lands on that key.</li>
+                <li>Use the <strong>◀ / ▶ Transpose</strong> buttons below to shift your whole progression by a 4th or 5th.</li>
+              </ul>
+            </div>
+            <div id="circle-of-fifths-container">
+              <!-- SVG rendered by circleOfFifths.js -->
+              <div id="cof-tooltip" class="cof-tooltip" style="display:none"></div>
+            </div>
+            <div id="cof-detail-card" class="cof-detail-card" style="display:none"></div>
+            <div id="transpose-row" class="transpose-row" style="display:none">
+              <button id="btn-transpose-down" class="btn btn-ghost btn-sm">◀ Down 4th</button>
+              <span class="transpose-label">Transpose</span>
+              <button id="btn-transpose-up" class="btn btn-ghost btn-sm">Up 5th ▶</button>
+            </div>
+            <div id="circle-transition-panel" style="display:none"></div>
+            <div id="function-flowchart" style="display:none"></div>
           </div>
         </section>
 
       </div><!-- /.dashboard-col-left -->
 
       <!-- ═══════════════════════════════════════════════
-           RIGHT COLUMN — Analysis & Theory
+           RIGHT COLUMN — Detected Key, Current Chord, Ideas
            ═══════════════════════════════════════════════ -->
       <div class="dashboard-col-right">
 
-        <!-- ── Player Level Filter ── -->
-        <div id="difficulty-bar" class="difficulty-bar">
-          <span class="difficulty-bar-label">Player Level</span>
-          <div class="difficulty-toggle-group">
-            <button class="difficulty-btn" data-level="beginner">Beginner</button>
-            <button class="difficulty-btn" data-level="intermediate">Intermediate</button>
-            <button class="difficulty-btn active" data-level="advanced">Advanced</button>
+        <!-- ── Section: Detected Key (collapsible, collapsed by default) ── -->
+        <section class="key-panel panel panel-primary" id="key-panel">
+          <button class="panel-collapse-header" id="key-panel-collapse-btn" aria-expanded="false" aria-controls="key-panel-body">
+            <span class="panel-title-row">
+              <img src="assets/icon-detected-key.png" alt="" class="panel-title-icon">
+              <span class="section-label" style="margin-bottom:0">Detected Key</span>
+              <span id="key-header-summary" class="key-header-summary"></span>
+            </span>
+            <span class="panel-chevron">▶</span>
+          </button>
+          <div class="panel-collapsible-body" id="key-panel-body" style="display:none">
+            <div id="key-display">
+              <div class="key-placeholder">Select chords on the fretboard…</div>
+            </div>
+            <!-- Diatonic Chords in Key — collapsible -->
+            <div class="panel-section-divider"></div>
+            <button class="panel-collapse-header" aria-expanded="false" aria-controls="diatonic-body">
+              <span class="section-label" style="margin-bottom:0">Diatonic Chords in Key</span>
+              <span class="panel-chevron">▶</span>
+            </button>
+            <div class="panel-collapsible-body" id="diatonic-body" style="display:none">
+              <div id="suggestions-section">
+                <div class="suggestions-grid" id="suggestions-grid">
+                  <div class="key-placeholder">Detect a key to see chord suggestions…</div>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
+        </section>
 
-        <!-- ── Voicing Explorer ── -->
-        <div id="voicing-explorer-panel" class="panel" style="display:none"></div>
+        <!-- ── Section 4: Current Chord + Voicings ── -->
+        <section class="chord-info-panel panel panel-primary" id="chord-info-panel">
+          <div class="panel-title-row">
+            <img src="assets/icon-current-chord.png" alt="" class="panel-title-icon">
+            <div class="section-label">Current Chord</div>
+          </div>
+          <div id="chord-display">
+            <div class="key-placeholder">Click frets to build a chord…</div>
+          </div>
+          <!-- Voicing explorer and alt voicings appear here when active -->
+          <div id="voicing-explorer-panel" style="display:none"></div>
+          <div id="alt-voicings-panel" style="display:none"></div>
+        </section>
 
-        <!-- ── Alternate Voicings for Current Chord ── -->
-        <div id="alt-voicings-panel" class="panel" style="display:none"></div>
-
-        <!-- ── Next Chord Ideas ── -->
-        <section class="panel" id="chord-ideas-panel" style="display:none">
-          <div class="section-label">Next Chord Ideas</div>
-          <div id="chord-ideas-grid"></div>
+        <!-- ── Section 5: Next Chord Ideas ── -->
+        <!-- Ideas panel — always visible -->
+        <section class="panel" id="chord-ideas-panel">
+          <div class="ideas-panel-header-row panel-collapse-header" aria-expanded="true" aria-controls="chord-ideas-body">
+            <span class="panel-title-row">
+              <img src="assets/icon-next-chord-ideas.png" alt="" class="panel-title-icon">
+              <span class="section-label" style="margin-bottom:0">Next Chord Ideas</span>
+            </span>
+            <div id="difficulty-bar" class="difficulty-bar">
+              <span class="difficulty-bar-label">Chord Tier</span>
+              <div class="difficulty-toggle-group">
+                <button class="difficulty-btn" data-level="basic">Basic</button>
+                <button class="difficulty-btn" data-level="color">Color</button>
+                <button class="difficulty-btn active" data-level="advanced">Advanced</button>
+              </div>
+            </div>
+            <span class="panel-chevron">▼</span>
+          </div>
+          <div class="panel-collapsible-body" id="chord-ideas-body">
+            <div id="chord-ideas-context"></div>
+            <div id="chord-ideas-grid"></div>
+          </div>
         </section>
 
         <!-- ── Scale Suggestions ── -->
-        <div id="scale-suggestions-panel" class="panel" style="display:none"></div>
-
-        <!-- ── Relationship Analyzer ── -->
-        <section class="panel ra-panel panel-analysis" id="relationship-analyzer">
-          <div class="ra-empty">
-            <span class="ra-empty-icon">⇄</span>
-            <span>Add chords to your progression to see relationship analysis.</span>
-            <span class="ra-hint">Ctrl+click multiple chord chips to analyze a specific subset.</span>
-          </div>
-        </section>
-
-        <!-- ── Circle of Fifths ── -->
-        <section class="circle-section panel" id="circle-section">
-          <button class="panel-collapse-header" aria-expanded="false" aria-controls="circle-body">
-            <span class="section-label">Circle of Fifths</span>
-            <span class="panel-chevron">▶</span>
+        <section class="panel" id="scale-sugg-section">
+          <button class="panel-collapse-header" aria-expanded="true" aria-controls="scale-sugg-body">
+            <span class="panel-title-row">
+              <img src="assets/icon-scale-suggestions.png" alt="" class="panel-title-icon">
+              <span class="section-label" style="margin-bottom:0">Scale Suggestions</span>
+            </span>
+            <span class="panel-chevron">▼</span>
           </button>
-          <div class="panel-collapsible-body" id="circle-body" style="display:none">
-            <div id="circle-of-fifths-container">
-              <!-- SVG rendered by circleOfFifths.js -->
-            </div>
-            <div id="circle-preview-panel" class="circle-preview-panel" style="display:none"></div>
-            <div id="circle-transition-panel" style="display:none"></div>
-            <div id="function-flowchart" style="display:none"></div>
+          <div class="panel-collapsible-body" id="scale-sugg-body">
+            <div id="scale-manual-controls"></div>
+            <div id="scale-suggestions-panel"></div>
           </div>
         </section>
 
@@ -242,6 +359,39 @@
     </div><!-- /.dashboard-body -->
 
   </div><!-- /.dashboard -->
+
+  <!-- Templates Popover -->
+  <div id="templates-popover" class="templates-popover" style="display:none" role="dialog" aria-label="Song form templates">
+    <div class="instructions-popover-inner">
+      <div class="instructions-header">
+        <span class="section-label" style="margin-bottom:0">Load Template</span>
+        <button id="btn-templates-close" class="btn btn-ghost btn-sm">✕</button>
+      </div>
+      <hr class="templates-divider">
+      <div id="templates-popover-list" class="templates-popover-list"></div>
+    </div>
+  </div>
+
+  <!-- Instructions Popover -->
+  <div id="instructions-popover" class="instructions-popover" style="display:none" role="dialog" aria-label="How to use Fretty">
+    <div class="instructions-popover-inner">
+      <div class="instructions-header">
+        <span class="section-label" style="margin-bottom:0">How to Use Fretty</span>
+        <button id="btn-instructions-close" class="btn btn-ghost btn-sm">✕</button>
+      </div>
+      <div class="instructions-body">
+        <p class="body-text">Click frets on the guitar neck to build chords. Add them to your progression and watch the key and theory panels update in real time.</p>
+        <ul class="instructions-list">
+          <li><strong>Click frets</strong> to select notes — Fretty identifies the chord automatically.</li>
+          <li><strong>+ Add to Progression</strong> to build a chord sequence.</li>
+          <li><strong>Click a chord chip</strong> to reload its voicing onto the fretboard.</li>
+          <li><strong>Explore Theory</strong> opens the scale degree and theory modal.</li>
+          <li><strong>Diatonic Chords</strong> shows chords that fit your detected key.</li>
+          <li><strong>Next Chord Ideas</strong> suggests musically interesting next moves.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
 
   <!-- Theory Explanation Modal -->
   <div id="theory-modal-overlay" class="theory-modal-overlay" style="display:none">
@@ -263,11 +413,59 @@
     </div>
   </div>
 
+  <!-- PDF Export Modal -->
+  <div id="pdf-export-modal" class="theory-modal-overlay" style="display:none" aria-modal="true" role="dialog" aria-label="Export as PDF">
+    <div class="theory-modal pdf-export-modal-box">
+      <div class="theory-modal-header">
+        <span class="theory-modal-title">Export as PDF</span>
+        <button class="theory-modal-close" id="btn-pdf-export-close" aria-label="Close">✕</button>
+      </div>
+      <div class="theory-modal-body pdf-export-body">
+        <div class="pdf-export-field">
+          <label for="pdf-song-title" class="pdf-export-label">Song Title</label>
+          <input id="pdf-song-title" class="pdf-export-input" type="text" placeholder="Untitled" maxlength="80" autocomplete="off">
+        </div>
+        <div class="pdf-export-divider"></div>
+        <div class="pdf-export-label">Include in export</div>
+        <div class="pdf-export-options">
+          <label class="pdf-export-option">
+            <input type="checkbox" name="pdf-page" value="diagrams" checked>
+            <span class="pdf-option-title">Chord Diagrams</span>
+            <span class="pdf-option-desc">Chord box diagrams for each section of your song</span>
+          </label>
+          <label class="pdf-export-option">
+            <input type="checkbox" name="pdf-page" value="tabs" checked>
+            <span class="pdf-option-title">Chord Progression: Tabs</span>
+            <span class="pdf-option-desc">Horizontal tab notation for each chord in your progression</span>
+          </label>
+          <label class="pdf-export-option">
+            <input type="checkbox" name="pdf-page" value="scales" checked>
+            <span class="pdf-option-title">Scale Suggestions</span>
+            <span class="pdf-option-desc">Matching scales with per-section fit ratings</span>
+          </label>
+          <label class="pdf-export-option">
+            <input type="checkbox" name="pdf-page" value="theory" checked>
+            <span class="pdf-option-title">Theory Explanation</span>
+            <span class="pdf-option-desc">Chord analysis, harmonic function, and scale degrees</span>
+          </label>
+        </div>
+        <div class="pdf-export-footer">
+          <button id="btn-pdf-export-cancel" class="btn btn-ghost">Cancel</button>
+          <button id="btn-pdf-export-generate" class="btn btn-primary">Generate PDF →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Glossary Modal -->
   <div id="glossary-overlay" class="glossary-overlay" style="display:none" aria-modal="true" role="dialog" aria-label="Theory Glossary">
     <div class="glossary-modal" id="glossary-modal"></div>
   </div>
 
-  <script type="module" src="js/app.js?v=12"></script>
+  <footer class="site-footer">
+    <span>&copy; 2026 Ripply. All rights reserved. Applied Guitar Theory.</span>
+  </footer>
+
+  <script type="module" src="js/app.js?v=14"></script>
 </body>
 </html>

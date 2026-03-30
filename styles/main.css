@@ -1,61 +1,99 @@
 /* ─── Design Tokens ─────────────────────────────────── */
 :root {
-  /* Studio Dark palette — cooler, deeper, more electric */
-  --bg-page:        #090910;
-  --bg-panel:       #111120;
-  --bg-panel-alt:   #0e1528;
-  --bg-control:     #08080f;
-  --border:         #1c1c2e;
-  --border-bright:  #3a3a58;
+  /* ── Fretty Palette ── */
+  /* Backgrounds */
+  --bg-page:         #0B0235;
+  --bg-panel:        #15104A;
+  --bg-panel-hover:  #1B1760;
+  --bg-inset:        #110C3F;
+  --bg-control:      #110C3F;
+  --bg-panel-alt:    #1B1760;
 
-  --text-primary:   #f2f2ff;
-  --text-secondary: #8888b0;
-  --text-hint:      #484865;
+  /* Text */
+  --text-primary:    #FDFDFD;
+  --text-secondary:  #C8D4FF;
+  --text-hint:       #8FA3D9;
+  --text-muted:      #8FA3D9;
+  --text-disabled:   #6673A8;
 
-  --accent-gold:    #f0a020;
-  --accent-blue:    #3da9fc;
-  --accent-green:   #22c55e;
-  --accent-red:     #f25c54;
-  --accent-purple:  #b57bee;
-  --accent-teal:    #00c4a7;
+  /* Borders */
+  --border:          #2D2A6E;
+  --border-bright:   #3D3A8E;
+  --border-soft:     #24205A;
+  --focus:           #079DF2;
 
-  /* Fretboard */
-  --fb-wood:        #5c3317;
-  --fb-wood-light:  #7a4525;
-  --fb-fret:        #b8b8c8;
-  --fb-nut:         #e8e0c8;
-  --fb-string:      #d4af37;
-  --fb-inlay:       rgba(255,255,255,0.12);
+  /* Blues — primary interactive (80% of UI color) */
+  --blue-deep:       #03179E;
+  --blue-bright:     #0462DE;
+  --blue-sky:        #079DF2;
+  --aqua:            #62EAF2;
 
-  /* Note dots */
-  --dot-selected:   #f25c54;
-  --dot-tonic:      #22c55e;
-  --dot-scale:      rgba(61,169,252,0.45);
-  --dot-dominant:   #f0a020;
-  --dot-text:       #ffffff;
+  /* Brand accents — use sparingly (5%) */
+  --brand-pink:      #EA185E;
+  --brand-orange:    #F86623;
+  --brand-gold:      #FAA311;
+  --brand-yellow:    #FBD117;
+
+  /* Gradients */
+  --gradient-brand:  linear-gradient(135deg, #EA185E, #F86623, #FBD117);
+  --gradient-cool:   linear-gradient(135deg, #03179E, #0462DE, #62EAF2);
+  --gradient-cosmic: linear-gradient(180deg, #0B0235, #15104A, #1B1760);
+
+  /* Legacy accent aliases — mapped to new palette */
+  --accent-gold:     #FAA311;
+  --accent-blue:     #079DF2;
+  --accent-green:    #62EAF2;
+  --accent-red:      #EA185E;
+  --accent-purple:   #0462DE;
+  --accent-teal:     #62EAF2;
+  --accent-cyan:     #079DF2;
 
   /* Chord function colors */
-  --fn-tonic:       #22c55e;
-  --fn-dominant:    #f25c54;
-  --fn-subdominant: #3da9fc;
-  --fn-other:       #b57bee;
+  --fn-tonic:        #62EAF2;
+  --fn-dominant:     #EA185E;
+  --fn-subdominant:  #079DF2;
+  --fn-other:        #0462DE;
 
-  --radius:         8px;
-  --radius-sm:      4px;
-  --gap:            12px;
-  --font-mono:      'JetBrains Mono', 'Courier New', monospace;
-  --font-display:   'Barlow Semi Condensed', 'IBM Plex Sans', sans-serif;
+  /* Fretboard */
+  --fb-wood:         #5c3317;
+  --fb-wood-light:   #7a4525;
+  --fb-fret:         #b8b8c8;
+  --fb-nut:          #e8e0c8;
+  --fb-string:       #d4af37;
+  --fb-inlay:        rgba(255,255,255,0.12);
+
+  /* Note dots */
+  --dot-selected:    #EA185E;
+  --dot-tonic:       #62EAF2;
+  --dot-scale:       rgba(7,157,242,0.45);
+  --dot-dominant:    #FAA311;
+  --dot-text:        #ffffff;
+
+  --radius:          8px;
+  --radius-sm:       4px;
+  --gap:             12px;
+  --font-mono:       'JetBrains Mono', 'Courier New', monospace;
+  --font-display:    'Barlow Semi Condensed', 'IBM Plex Sans', sans-serif;
+
+  /* Typography scale */
+  --font-size-section-label: 0.8rem;
+  --font-size-card-title:    0.93rem;
+  --font-size-body:          0.85rem;
+  --font-size-meta:          0.7rem;
+  --line-height-body:        1.65;
+  --line-height-meta:        1.45;
 }
 
 /* ─── Reset & Base ──────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  background: radial-gradient(ellipse at 30% 0%, #13132a 0%, #090910 55%);
+  background: var(--bg-page);
+  background-image: radial-gradient(ellipse at 50% 0%, #1B1760 0%, #0B0235 65%);
   color: var(--text-primary);
   font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 15px;
+  line-height: 1.55;
   min-height: 100vh;
 }
 
@@ -96,12 +134,8 @@ body::before {
   display: flex;
   flex-direction: column;
   gap: var(--gap);
-  position: sticky;
-  top: 12px;
-  max-height: calc(100vh - 24px);
-  overflow-y: auto;
-  /* subtle scrollbar so it doesn't feel broken */
-  scrollbar-width: thin;
+  /* No max-height / overflow clipping — expanding panels (Harmony, Relationship)
+     push content down naturally without covering the fretboard above them. */
 }
 
 .dashboard-col-right {
@@ -115,11 +149,6 @@ body::before {
   .dashboard-body {
     grid-template-columns: 1fr;
   }
-  .dashboard-col-left {
-    position: static;
-    max-height: none;
-    overflow-y: visible;
-  }
 }
 
 /* ─── Header ────────────────────────────────────────── */
@@ -127,7 +156,7 @@ body::before {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: 8px 16px;
   background: var(--bg-panel);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -138,15 +167,12 @@ body::before {
   align-items: center;
   gap: 10px;
 }
-.header-icon { font-size: 1.6rem; }
-.header-bar h1 {
-  font-family: var(--font-display);
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: var(--accent-gold);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+.header-logo {
+  height: 80px;
+  width: auto;
+  object-fit: contain;
 }
+.header-theory-btn { margin-left: 16px; }
 .header-actions { display: flex; gap: 8px; }
 
 /* ─── Panels ────────────────────────────────────────── */
@@ -154,7 +180,7 @@ body::before {
   background: var(--bg-panel);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 14px 16px;
+  padding: 10px 16px 14px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.45);
 }
 
@@ -165,32 +191,73 @@ body::before {
 
 /* Tier 3: analysis/reference panels — recessed feel */
 .panel-analysis {
-  background: #0c0c1a;
+  background: var(--bg-inset);
   box-shadow: inset 0 1px 4px rgba(0,0,0,0.35);
 }
 
 .section-label {
-  font-family: var(--font-display);
-  font-size: 0.68rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  color: #7070a0;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  font-variant: normal;
+  letter-spacing: 0.06em;
+  color: #7090c0;
   margin-bottom: 10px;
-  border-left: 2px solid currentColor;
-  padding-left: 7px;
+  display: block;
+}
+
+.panel-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.panel-collapse-header .panel-title-row {
+  margin-bottom: 0;
+}
+
+/* Collapsible sub-headers match main panel title size */
+
+.panel-title-row .section-label {
+  margin-bottom: 0;
+}
+
+.panel-title-icon {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 .hint {
   font-weight: 400;
   text-transform: none;
   letter-spacing: 0;
-  font-size: 0.72rem;
-  color: var(--text-hint);
+  font-size: var(--font-size-meta);
+  color: var(--text-muted);
 }
 .key-placeholder {
   color: var(--text-hint);
   font-style: italic;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
+}
+
+/* ─── 4-Level Typography System ────────────────────── */
+.card-title {
+  font-size: var(--font-size-card-title);
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+.body-text {
+  font-size: var(--font-size-body);
+  color: var(--text-primary);
+  line-height: var(--line-height-body);
+}
+.meta-text {
+  font-size: var(--font-size-meta);
+  color: var(--text-secondary);
+  line-height: var(--line-height-meta);
 }
 
 /* ─── Two-Column Rows (legacy, kept for compatibility) ── */
@@ -290,25 +357,101 @@ body::before {
 }
 
 /* ─── Fretboard Controls ────────────────────────────── */
-/* ── Shape shift bar ── */
-.shape-shift-bar {
+
+/* ── Move Shape row — centred strip directly below fretboard ── */
+.move-shape-row {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 7px 12px;
+  gap: 8px;
+  padding: 5px 12px 3px;
   background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-top: none;
+  border-top: 1px solid var(--border-soft);
+}
+
+/* ── Icon bar — 3 equal columns: Tuning | Capo | Tone ── */
+.shape-shift-bar {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  align-items: center;
+  padding: 4px 12px;
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border-soft);
+}
+
+/* Left: Tuning */
+.shape-shift-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-self: start;
+}
+
+/* Centre: Capo */
+.shape-shift-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* Right: Tone */
+.shape-shift-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+/* Capo popover inner layout */
+.capo-popover-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  min-width: 230px;
+}
+.capo-pos-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.capo-remove-btn {
+  background: transparent;
+  border: 1px solid #e53e3e;
+  color: #e53e3e;
+  border-radius: 6px;
+  padding: 4px 16px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.15s;
+  width: 100%;
+}
+.capo-remove-btn:hover {
+  background: rgba(229, 62, 62, 0.15);
+}
+
+/* Capo icon button active glow — purple instead of gold */
+#capo-icon-btn.open {
+  outline: 2px solid #9333ea;
+  outline-offset: 3px;
+}
+
+/* Capo Apply button highlights when pending capo differs from applied capo */
+#btn-capo-apply.pending {
+  border-color: var(--accent-gold);
+  color: var(--accent-gold);
 }
 
 .shape-shift-label {
-  font-size: 0.65rem;
+  font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--text-secondary);
   text-transform: uppercase;
-  margin-right: 2px;
 }
 
 .shape-shift-btn {
@@ -316,8 +459,8 @@ body::before {
   border: 1px solid var(--border);
   color: var(--text-primary);
   border-radius: 6px;
-  padding: 4px 14px;
-  font-size: 0.9rem;
+  padding: 3px 10px;
+  font-size: 0.72rem;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
   line-height: 1.6;
@@ -335,7 +478,7 @@ body::before {
 .shape-shift-pos {
   min-width: 44px;
   text-align: center;
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   font-weight: 700;
   color: var(--text-secondary);
   letter-spacing: 0.04em;
@@ -350,11 +493,9 @@ body::before {
   flex-wrap: wrap;
   align-items: center;
   gap: 14px;
-  padding: 10px 12px;
+  padding: 10px 16px;
   background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-top: none;
-  border-radius: 0 0 var(--radius) var(--radius);
+  border-top: 1px solid var(--border-soft);
 }
 .tab-input-group {
   display: flex;
@@ -409,9 +550,10 @@ body::before {
   align-items: center;
   gap: 6px;
   padding: 6px 10px;
+  margin-top: 14px;
   margin-bottom: 6px;
-  background: rgba(155, 89, 182, 0.08);
-  border: 1px solid rgba(155, 89, 182, 0.25);
+  background: rgba(4,98,222,0.1);
+  border: 1px solid rgba(4,98,222,0.3);
   border-radius: var(--radius-sm);
   font-size: 0.75rem;
   line-height: 1.4;
@@ -419,14 +561,14 @@ body::before {
 .pattern-badge-icon { font-size: 0.9rem; }
 .pattern-badge-name {
   font-weight: 700;
-  color: var(--accent-purple);
+  color: var(--blue-sky);
 }
 .pattern-badge-genre {
   font-size: 0.65rem;
   padding: 1px 5px;
   border-radius: 3px;
-  background: rgba(155, 89, 182, 0.15);
-  color: var(--accent-purple);
+  background: rgba(7,157,242,0.15);
+  color: var(--blue-sky);
   font-weight: 600;
 }
 .pattern-badge-examples {
@@ -434,9 +576,9 @@ body::before {
   font-style: italic;
 }
 .pattern-badge-desc {
-  color: var(--text-hint);
+  color: var(--text-muted);
   flex-basis: 100%;
-  font-size: 0.7rem;
+  font-size: var(--font-size-meta);
 }
 
 .chord-chip {
@@ -535,16 +677,25 @@ body::before {
   color: var(--accent-teal);
 }
 
-/* ─── Primary Action Button (Add to Progression) ───── */
-#btn-add-chord {
-  padding: 8px 20px;
-  font-size: 0.85rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  box-shadow: 0 0 0 1px rgba(61,169,252,0.45), 0 2px 8px rgba(61,169,252,0.18);
+/* ─── Image-based action buttons (Add / Replace) ───── */
+.btn-action-img {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  transition: opacity 0.15s, transform 0.12s;
 }
-#btn-add-chord:hover {
-  box-shadow: 0 0 0 3px rgba(61,169,252,0.28), 0 4px 14px rgba(61,169,252,0.22);
+.btn-action-img:hover { opacity: 0.88; transform: scale(1.03); }
+.btn-action-img:active { opacity: 0.7; transform: scale(0.97); }
+.btn-action-img-src {
+  height: 46px;
+  width: auto;
+  display: block;
+}
+.btn-replace-img .btn-action-img-src {
+  height: 42px;
 }
 
 /* ─── Panel Reveal Animation ────────────────────────── */
@@ -558,17 +709,17 @@ body::before {
 
 /* ─── Add-to-Progression Button Pulse ───────────────── */
 @keyframes btnSuccess {
-  0%   { box-shadow: 0 0 0 0   rgba(61,169,252,0.7), 0 2px 8px rgba(61,169,252,0.18); }
-  70%  { box-shadow: 0 0 0 10px rgba(61,169,252,0),   0 2px 8px rgba(61,169,252,0.18); }
-  100% { box-shadow: 0 0 0 0   rgba(61,169,252,0),   0 2px 8px rgba(61,169,252,0.18); }
+  0%   { filter: brightness(1) drop-shadow(0 0 0px rgba(7,157,242,0.0)); }
+  40%  { filter: brightness(1.25) drop-shadow(0 0 8px rgba(7,157,242,0.8)); }
+  100% { filter: brightness(1) drop-shadow(0 0 0px rgba(7,157,242,0.0)); }
 }
 .btn-pulse { animation: btnSuccess 0.5s ease-out; }
 
 /* ─── Key Panel Glow on Key Change ──────────────────── */
 @keyframes keyPanelGlow {
-  0%   { box-shadow: 0 -3px 24px rgba(240,160,32,0),   0 2px 14px rgba(0,0,0,0.55); }
-  35%  { box-shadow: 0 -3px 24px rgba(240,160,32,0.55), 0 2px 14px rgba(0,0,0,0.55); }
-  100% { box-shadow: 0 -3px 24px rgba(240,160,32,0),   0 2px 14px rgba(0,0,0,0.55); }
+  0%   { box-shadow: 0 -3px 24px rgba(250,163,17,0),   0 2px 14px rgba(0,0,0,0.55); }
+  35%  { box-shadow: 0 -3px 24px rgba(250,163,17,0.55), 0 2px 14px rgba(0,0,0,0.55); }
+  100% { box-shadow: 0 -3px 24px rgba(250,163,17,0),   0 2px 14px rgba(0,0,0,0.55); }
 }
 .key-panel.key-glow {
   animation: keyPanelGlow 0.9s cubic-bezier(0.22, 1, 0.36, 1);
@@ -598,3 +749,100 @@ body::before {
 ::-webkit-scrollbar-track { background: var(--bg-page); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--border-bright); }
+
+/* ─── PDF Export Modal ──────────────────────────────── */
+.pdf-export-modal-box {
+  width: min(480px, 95vw);
+  max-height: 90vh;
+}
+.pdf-export-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+.pdf-export-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pdf-export-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-secondary);
+}
+.pdf-export-input {
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  padding: 8px 10px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.pdf-export-input:focus { border-color: var(--focus); }
+.pdf-export-divider {
+  border-top: 1px solid var(--border-soft);
+  margin: 2px 0;
+}
+.pdf-export-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pdf-export-option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 10px;
+  row-gap: 1px;
+  padding: 8px 10px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.pdf-export-option:hover {
+  border-color: var(--border);
+  background: var(--bg-panel-hover);
+}
+.pdf-export-option input[type="checkbox"] {
+  grid-row: 1 / 3;
+  align-self: center;
+  accent-color: var(--focus);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+.pdf-option-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.pdf-option-desc {
+  font-size: 0.75rem;
+  color: var(--text-hint);
+}
+.pdf-export-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border-soft);
+  margin-top: 4px;
+}
+
+/* ── Site footer ── */
+.site-footer {
+  text-align: center;
+  padding: 12px 16px;
+  font-size: 11px;
+  color: var(--text-muted, #9ca3af);
+  border-top: 1px solid var(--border-soft, #2d2d4e);
+  background: var(--bg-card, #12122a);
+  margin-top: 24px;
+}

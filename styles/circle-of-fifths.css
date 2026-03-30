@@ -5,61 +5,156 @@
   align-items: stretch;
 }
 
+/* ─── CoF Panel Header Row (label + ⓘ button) ─────── */
+.cof-panel-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.cof-panel-header-row .panel-collapse-header {
+  flex: 1;
+}
+.cof-info-btn {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  color: var(--text-hint, #64748b);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  line-height: 1;
+  padding: 0;
+}
+.cof-info-btn:hover,
+.cof-info-btn--active {
+  color: var(--blue-sky, #38bdf8);
+  border-color: var(--blue-sky, #38bdf8);
+}
+
+/* ─── CoF Inline Instructions ────────────────────── */
+.cof-instructions {
+  background: rgba(56,189,248,0.07);
+  border: 1px solid rgba(56,189,248,0.2);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  font-size: 0.75rem;
+  color: var(--text-secondary, #94a3b8);
+  line-height: 1.6;
+}
+.cof-instructions strong {
+  display: block;
+  color: var(--text-primary, #e2e8f0);
+  font-size: 0.78rem;
+  margin-bottom: 6px;
+}
+.cof-instructions ul {
+  margin: 0;
+  padding-left: 16px;
+}
+.cof-instructions li {
+  margin-bottom: 3px;
+}
+.cof-instructions li strong {
+  display: inline;
+  color: var(--blue-sky, #38bdf8);
+  font-size: inherit;
+  margin-bottom: 0;
+}
+
 #circle-of-fifths-container {
   display: flex;
   justify-content: center;
   align-items: center;
   flex: 1;
+  position: relative; /* needed for tooltip absolute positioning */
 }
 
 #circle-svg {
   width: 100%;
-  max-width: 340px;
+  max-width: 380px;
   height: auto;
   display: block;
   margin: 0 auto;
+  overflow: visible;
 }
 
 /* ─── Segment Styles ────────────────────────────────── */
-.cof-segment-outer {
-  cursor: pointer;
-  transition: opacity 0.15s;
-}
-.cof-segment-outer:hover { opacity: 0.85; }
-
+.cof-segment-outer,
 .cof-segment-inner {
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: filter 0.15s, opacity 0.15s;
 }
-.cof-segment-inner:hover { opacity: 0.85; }
+.cof-segment-outer:hover { filter: brightness(1.25) !important; }
+.cof-segment-inner:hover { filter: brightness(1.15) !important; }
 
 /* Active (detected key) */
-.cof-active-outer { stroke: var(--accent-gold) !important; stroke-width: 2.5 !important; }
-.cof-active-inner { stroke: var(--accent-gold) !important; stroke-width: 2 !important; }
+.cof-active-outer { stroke: var(--accent-gold, #f0c040) !important; stroke-width: 2.5 !important; }
+.cof-active-inner { stroke: var(--accent-gold, #f0c040) !important; stroke-width: 2 !important; }
 
-/* Adjacent keys (IV and V neighbors) */
-.cof-adjacent-outer { opacity: 0.9; }
+/* Chord preview hover highlight */
+.cof-preview { stroke: #ffffff !important; stroke-width: 2 !important; filter: brightness(1.3) !important; }
 
-/* ─── Text Labels (arc-following via textPath) ──────── */
-.cof-label-outer {
+/* ─── Key Labels ────────────────────────────────────── */
+.cof-label-major {
+  fill: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  font-family: system-ui, sans-serif;
+  pointer-events: none;
+}
+
+.cof-label-minor {
+  fill: rgba(255, 255, 255, 0.75);
+  font-size: 9px;
+  font-weight: 500;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  font-family: system-ui, sans-serif;
+  pointer-events: none;
+}
+
+/* ─── Center Text ───────────────────────────────────── */
+.cof-center-text {
   fill: #ffffff;
   font-size: 11px;
   font-weight: 700;
-  text-anchor: middle;   /* centres text at startOffset="50%" on the arc */
-  font-family: system-ui, sans-serif;
-  pointer-events: none;
-}
-.cof-label-inner {
-  fill: rgba(255,255,255,0.85);
-  font-size: 9px;
-  font-weight: 600;
+  letter-spacing: 1px;
   text-anchor: middle;
+  dominant-baseline: auto;
   font-family: system-ui, sans-serif;
   pointer-events: none;
 }
 
-/* Active label highlight */
-.cof-label-active { fill: #1a1a1a; }
+/* ─── Roman Numeral Labels (inside segments) ──────── */
+.cof-numeral-label {
+  font-size: 9px;
+  font-weight: 700;
+  font-family: system-ui, sans-serif;
+  fill: rgba(255,255,255,0.5);
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+}
+.cof-numeral-label.cof-numeral-active {
+  fill: rgba(255,255,255,0.95);
+}
+
+/* ─── Root Motion Arcs ────────────────────────────── */
+.cof-motion-arc {
+  opacity: 0.8;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
 
 /* ─── Function Flowchart ───────────────────────────── */
 #function-flowchart {
@@ -69,7 +164,7 @@
 
 .fn-flow-svg {
   width: 100%;
-  max-width: 340px;
+  max-width: 380px;
   height: auto;
   display: block;
   margin: 0 auto;
@@ -109,23 +204,170 @@
   opacity: 0.5;
 }
 
-/* ─── Roman Numeral Labels (inside segments) ──────── */
-.cof-numeral-label {
-  font-size: 9px;
-  font-weight: 700;
-  font-family: system-ui, sans-serif;
-  fill: rgba(255,255,255,0.5);
-  text-anchor: middle;
-  dominant-baseline: middle;
+/* ─── Circle Tooltip ─────────────────────────────────── */
+.cof-tooltip {
+  position: absolute;
   pointer-events: none;
-}
-.cof-numeral-label.cof-numeral-active {
-  fill: rgba(255,255,255,0.95);
+  background: rgba(8, 10, 28, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 7px;
+  padding: 6px 11px;
+  font-size: 0.72rem;
+  color: #e2e8f0;
+  white-space: nowrap;
+  z-index: 30;
+  line-height: 1.5;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
 }
 
-/* ─── Root Motion Arcs ────────────────────────────── */
-.cof-motion-arc {
-  opacity: 0.8;
-  transition: opacity 0.2s;
-  pointer-events: none;
+/* ─── Circle Detail Card ─────────────────────────────── */
+.cof-detail-card {
+  margin-top: 10px;
+  background: rgba(12, 16, 44, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 13px 15px;
+  font-size: 0.8rem;
+  color: #cbd5e1;
+  line-height: 1.5;
+}
+.cof-detail-title {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin-bottom: 3px;
+}
+.cof-detail-quality {
+  font-weight: 400;
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
+.cof-detail-numeral {
+  font-size: 0.85rem;
+  color: #93c5fd;
+  font-weight: 600;
+}
+.cof-detail-func {
+  font-size: 0.75rem;
+  color: #6ee7b7;
+  font-weight: 500;
+}
+.cof-detail-sub {
+  font-size: 0.72rem;
+  color: #64748b;
+  margin-bottom: 10px;
+}
+.cof-detail-explanation {
+  font-size: 0.76rem;
+  color: #94a3b8;
+  font-style: italic;
+  margin-bottom: 10px;
+  border-left: 2px solid rgba(99,102,241,0.4);
+  padding-left: 8px;
+}
+.cof-detail-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #475569;
+  margin-bottom: 5px;
+  margin-top: 8px;
+}
+.cof-diatonic-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 4px;
+  align-items: center;
+}
+.cof-diatonic-chip {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-size: 0.72rem;
+  color: #e2e8f0;
+}
+.cof-detail-arrow {
+  font-size: 0.85rem;
+  color: #475569;
+}
+.cof-detail-set-key-btn {
+  display: inline-block;
+  margin-top: 10px;
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
+  border: 1px solid #3b82f6;
+  color: #eff6ff;
+  font-size: 0.75rem;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.cof-detail-set-key-btn:hover {
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+}
+
+/* ─── Detail card slide-in animation ────────────────── */
+@keyframes cofDrawerIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.cof-detail-card[style*="display: none"] { animation: none; }
+.cof-detail-card:not([style*="display: none"]) { animation: cofDrawerIn 0.18s ease; }
+
+/* ─── Borrowed chord chips ───────────────────────────── */
+.cof-borrowed {
+  border-color: rgba(234, 179, 8, 0.35) !important;
+  color: #fbbf24 !important;
+}
+
+/* ─── Next chord action chips ────────────────────────── */
+.cof-next-chip {
+  background: rgba(37, 99, 235, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: #93c5fd;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.cof-next-chip:hover {
+  background: rgba(37, 99, 235, 0.35);
+  border-color: rgba(59, 130, 246, 0.6);
+}
+
+/* ─── Cadence chips ──────────────────────────────────── */
+.cof-cadence-chip {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  color: #6ee7b7;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+}
+
+/* ─── Transpose row ──────────────────────────────────── */
+.transpose-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 4px 0;
+}
+.transpose-label {
+  font-size: 0.68rem;
+  color: var(--text-muted, #64748b);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* ─── Compare mode highlight ─────────────────────────── */
+.cof-compare-seg {
+  filter: brightness(1.7) drop-shadow(0 0 7px #f59e0b) !important;
+  stroke: #f59e0b !important;
+  stroke-width: 2.5 !important;
 }

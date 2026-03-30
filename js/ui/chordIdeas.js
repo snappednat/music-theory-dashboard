@@ -6,9 +6,10 @@
  */
 
 import { getChordIdeas, getChordNumeral, getDegreeInKey, getHarmonicFunction } from '../core/keys.js';
-import { generateVoicings }     from '../core/chords.js';
+import { generateVoicings, QUALITY_DIFFICULTY, CHORD_FORMULAS } from '../core/chords.js';
 import { buildChordDiagramHtml } from './voicingExplorer.js';
 import { playChord }             from '../core/audio.js';
+import { CHROMATIC_SHARP, pitchToNoteInKey, normalizePitch } from '../core/notes.js';
 
 const INTENT_GROUPS = [
   { key: 'resolve',  label: 'Resolve',             cls: 'intent-resolve'  },
@@ -28,13 +29,14 @@ let _ideas               = [];          // last-computed ideas list (for handler
 let _topPicksOpen   = true;   // open by default
 let _otherOpen      = false;
 let _chromaticOpen  = false;
+let _slashOpen      = false;  // slash chord / inversions section
 
 // Captured callbacks — stored so re-renders inside handlers work without args
 let _savedActiveKey        = null;
 let _savedProgression      = null;
 let _savedLastChord        = null;   // current fretboard chord — context for transition sorting
 let _savedTuning           = null;
-let _savedDifficultyFilter = 'advanced'; // 'beginner' | 'intermediate' | 'advanced'
+let _savedDifficultyFilter = 'advanced'; // 'basic' | 'color' | 'advanced'
 let _savedOnVoicingPreview = null;
 let _savedOnAdd            = null;
 let _savedOnHover          = null;  // (chord|null) => void — circle preview on hover
@@ -52,7 +54,7 @@ let _savedOnLock           = null;  // (chord|null) => void — lock preview on 
  * @param {function}    [onHover]          - (chord|null) → void   hover preview on circle
  * @param {function}    [onLock]           - (chord|null) → void   lock preview on expand/collapse
  * @param {object|null} [lastChord]        - current fretboard chord used to context-sort suggestions
- * @param {string}      [difficultyFilter] - 'beginner' | 'intermediate' | 'advanced'
+ * @param {string}      [difficultyFilter] - 'basic' | 'color' | 'advanced'
  */
 export function renderChordIdeas(activeKey, progression, tuning, onVoicingPreview, onAddToProgression, onHover = null, onLock = null, lastChord = null, difficultyFilter = 'advanced') {
   _savedActiveKey        = activeKey;
@@ -200,6 +202,163 @@ function _transitionReason(lastChord, idea, key) {
   return label ? `${lNum}→${iNum}: ${label}` : null;
 }
 
+// ─── Slash chord helpers ───────────────────────────────────────────────────────
+
+const _SLASH_RESOLUTION = {
+  1: (bassNote, rootNote) => `${bassNote} (the 3rd) in the bass — bass line steps up a half step toward ${rootNote}`,
+  2: (bassNote, rootNote) => `${bassNote} (the 5th) in the bass — unstable, tends to resolve to the ${bassNote} chord`,
+};
+
+const _SLASH_OUTCOME = {
+  1: 'Smooth bass line descent/ascent',
+  2: 'Cadential tension — pulls to bass note',
+};
+
+/**
+ * Generate first-inversion voicings for a chord algorithmically.
+ * Finds shapes where targetBassPitch is on the lowest sounding string,
+ * then fills higher strings with chord tones within a 4-fret window.
+ */
+function _generateFirstInvVoicings(root, quality, targetBassPitch, tuning) {
+  const formula = CHORD_FORMULAS[quality];
+  if (!formula || formula.length < 2) return [];
+  const chordTones = formula.map(s => ((root + s) % 12 + 12) % 12);
+  const results = [];
+
+  for (let bassStr = 0; bassStr < 5; bassStr++) {
+    // Find fret on this string that plays targetBassPitch
+    let bassFret = ((targetBassPitch - tuning[bassStr]) % 12 + 12) % 12;
+    if (bassFret > 9) continue; // too high for practical bass
+
+    const frets = new Array(6).fill(-1);
+    frets[bassStr] = bassFret;
+
+    // Fill higher strings with nearest chord tone in a 4-fret window
+    const hi = bassFret + 4;
+    for (let s = bassStr + 1; s < 6; s++) {
+      let best = -1, bestDist = 99;
+      for (const tone of chordTones) {
+        let f = ((tone - tuning[s]) % 12 + 12) % 12;
+        // Shift up octaves until we're at or above bassFret
+        while (f < bassFret) f += 12;
+        if (f > hi) continue;
+        const dist = Math.abs(f - bassFret);
+        if (dist < bestDist) { best = f; bestDist = dist; }
+      }
+      frets[s] = best;
+    }
+
+    const nonMuted = frets.filter(f => f >= 0).length;
+    if (nonMuted < 3) continue;
+
+    results.push({ frets, label: CHROMATIC_SHARP[root] + '/' + CHROMATIC_SHARP[targetBassPitch], difficulty: 'color' });
+    if (results.length >= 2) break;
+  }
+  return results;
+}
+
+/**
+ * Build first-inversion slash chord ideas for the active key.
+ * Only generates inversions for the most guitar-practical diatonic chords.
+ */
+function _getSlashIdeas(key, tuning) {
+  if (!key?.diatonicChords) return [];
+  const kr = key.root;
+  const ideas = [];
+
+  // Prioritize: I, IV, V, ii, vi (most common in guitar inversions)
+  const PRIORITY_DEGREES = [1, 4, 5, 2, 6, 3, 7];
+
+  for (const deg of PRIORITY_DEGREES) {
+    const dc = key.diatonicChords[deg - 1];
+    if (!dc) continue;
+    const formula = CHORD_FORMULAS[dc.quality];
+    if (!formula || formula.length < 2) continue;
+
+    // First inversion: 3rd in bass
+    const thirdSemis = formula[1];
+    const thirdPitch = ((dc.root + thirdSemis) % 12 + 12) % 12;
+    const rootNoteName  = pitchToNoteInKey(dc.root, kr);
+    const thirdNoteName = pitchToNoteInKey(thirdPitch, kr);
+    const slashName = `${dc.name}/${thirdNoteName}`;
+
+    // Generate first-inversion voicings algorithmically
+    const invV = _generateFirstInvVoicings(dc.root, dc.quality, thirdPitch, tuning);
+
+    if (invV.length === 0) continue; // Skip if no playable inversion found
+
+    ideas.push({
+      root:         dc.root,
+      quality:      dc.quality,
+      name:         dc.name,
+      slashName,
+      bassNote:     thirdNoteName,
+      bassPitch:    thirdPitch,
+      inversion:    1,
+      category:     'inversion',
+      fit:          'green',
+      reason:       `1st inversion — ${thirdNoteName} in the bass`,
+      inversionType: 1,
+      invVoicings:  invV,
+      rootNoteName,
+      degree:       deg,
+    });
+  }
+
+  return ideas;
+}
+
+/**
+ * Build an HTML card for a slash chord suggestion.
+ */
+function _slashCardHtml(idea, tuning) {
+  const cardKey = `slash:${idea.root},${idea.quality}`;
+  const expanded = _expandedCardKey === cardKey;
+  const numeral  = _savedActiveKey ? getChordNumeral(idea.root, idea.quality, _savedActiveKey) : null;
+  const badgeHtml = numeral
+    ? `<span class="idea-numeral-badge idea-numeral-${_numeralClass(numeral)}">${numeral}</span>`
+    : '';
+  const resolutionNote = _SLASH_RESOLUTION[1]?.(idea.bassNote, idea.rootNoteName) ?? '';
+  const outcome = _SLASH_OUTCOME[1];
+
+  let expansionHtml = '';
+  if (expanded) {
+    const maxRnk = _IDEA_DIFF_RANK[_savedDifficultyFilter] ?? 2;
+    const filtV  = idea.invVoicings.filter(v => (_IDEA_DIFF_RANK[v.difficulty ?? 'advanced']) <= maxRnk);
+    const voicings = filtV.length ? filtV : idea.invVoicings;
+    const vCards = voicings.slice(0, 4).map((v, i) => {
+      const isSelected = i === _expandedVoicingIdx;
+      const diag = buildChordDiagramHtml(v.frets, _savedTuning, idea.root);
+      return `<div class="idea-voicing-card${isSelected ? ' idea-voicing-selected' : ''}"
+                   data-idx="${i}" data-frets="${v.frets.join(',')}" data-cardkey="${cardKey}">
+        ${diag}
+        <span class="idea-voicing-label">${v.label ?? ''}</span>
+        <button class="btn-play idea-play-btn" data-frets="${v.frets.join(',')}" title="Preview">▶</button>
+      </div>`;
+    }).join('');
+    expansionHtml = `
+      <div class="idea-expansion">
+        <div class="idea-voicings-grid">${vCards}</div>
+      </div>`;
+  }
+
+  return `
+    <div class="idea-card inversion${expanded ? ' idea-card-expanded' : ''}"
+         data-cardkey="${cardKey}" data-root="${idea.root}" data-quality="${idea.quality}">
+      <div class="idea-card-header" data-action="toggle" data-cardkey="${cardKey}">
+        <div class="idea-chord-top">
+          <span class="idea-chord-name">${idea.slashName}</span>${badgeHtml}
+          <span class="idea-inv-tag">inversion</span>
+        </div>
+        <div class="idea-outcome">${outcome}</div>
+        <div class="idea-theory">${resolutionNote}</div>
+        <span class="idea-expand-arrow">${expanded ? '▲' : '▼'}</span>
+      </div>
+      ${expansionHtml}
+    </div>
+  `;
+}
+
 // ─── Internal render ──────────────────────────────────────────────────────────
 
 function _doRender() {
@@ -207,13 +366,63 @@ function _doRender() {
   if (!panel) return;
 
   if (!_savedActiveKey || _savedProgression.length === 0) {
-    panel.style.display = 'none';
+    panel.style.display = '';
+    const contextEl = document.getElementById('chord-ideas-context');
+    const gridEl    = document.getElementById('chord-ideas-grid');
+    if (contextEl) contextEl.innerHTML = '';
+
+    // Key set but no progression yet → show diatonic starter chords
+    if (_savedActiveKey && _savedProgression.length === 0) {
+      _ideas = _savedActiveKey.diatonicChords.map(dc => ({
+        root:     dc.root,
+        quality:  dc.quality,
+        name:     dc.name,
+        category: 'diatonic',
+        fit:      'green',
+        reason:   dc.explanation ?? dc.functionLabel ?? '',
+        degree:   dc.degree,
+      }));
+
+      if (contextEl) contextEl.innerHTML =
+        `<div class="ideas-context-label">Diatonic chords in <strong>${_savedActiveKey.name}</strong> — pick one to start</div>`;
+
+      let html = `
+        <div class="ideas-section-header ideas-top-picks" data-action="toggle-group" data-group="topPicks">
+          <span class="ideas-section-arrow">${_topPicksOpen ? '▼' : '▶'}</span>
+          Top Ideas <span class="ideas-section-count">${_ideas.length}</span>
+        </div>`;
+      if (_topPicksOpen) {
+        html += '<div class="idea-cards-row">';
+        for (const idea of _ideas) html += _cardHtml(idea);
+        html += '</div>';
+      }
+      if (gridEl) gridEl.innerHTML = html;
+
+      panel.querySelectorAll('.idea-card').forEach(card => {
+        const cardKey = card.dataset.cardkey;
+        const idea    = _ideas.find(i => `${i.root},${i.quality}` === cardKey);
+        if (!idea) return;
+        card.addEventListener('mouseenter', () => {
+          if (_expandedCardKey !== cardKey) _savedOnHover?.(idea);
+        });
+        card.addEventListener('mouseleave', () => {
+          if (_expandedCardKey !== cardKey) _savedOnHover?.(null);
+        });
+      });
+      return;
+    }
+
+    if (gridEl) gridEl.innerHTML = '<div class="key-placeholder">Add a chord to explore what your ear wants next — find what\'s in your head.</div>';
     return;
   }
 
   _ideas = getChordIdeas(_savedActiveKey, _savedProgression, _savedLastChord);
   if (_ideas.length === 0) {
-    panel.style.display = 'none';
+    panel.style.display = '';
+    const contextEl = document.getElementById('chord-ideas-context');
+    const gridEl    = document.getElementById('chord-ideas-grid');
+    if (contextEl) contextEl.innerHTML = '';
+    if (gridEl)    gridEl.innerHTML = '<div class="key-placeholder">Add a chord to explore what your ear wants next — find what\'s in your head.</div>';
     return;
   }
 
@@ -225,14 +434,22 @@ function _doRender() {
   }
 
   // ── Partition ideas ────────────────────────────────────────────────────────
-  const FIT_RANK = { green: 0, yellow: 1, red: 2 };
+  const FIT_RANK  = { green: 0, yellow: 1, red: 2 };
+  const TIER_RANK = { basic: 0, color: 1, advanced: 2 };
   const sorted = [..._ideas].sort((a, b) => {
+    // 1. Most musically appropriate: diatonic (green) → functional (yellow) → chromatic (red)
     const fd = (FIT_RANK[a.fit] ?? 1) - (FIT_RANK[b.fit] ?? 1);
-    return fd !== 0 ? fd : (b.transitionScore ?? 0) - (a.transitionScore ?? 0);
+    if (fd !== 0) return fd;
+    // 2. Most playable/common first: Basic before Color before Advanced
+    const aTier = TIER_RANK[QUALITY_DIFFICULTY[a.quality] ?? 'advanced'] ?? 2;
+    const bTier = TIER_RANK[QUALITY_DIFFICULTY[b.quality] ?? 'advanced'] ?? 2;
+    const td = aTier - bTier;
+    // 3. Richer alternatives: higher transitionScore as final tiebreak
+    return td !== 0 ? td : (b.transitionScore ?? 0) - (a.transitionScore ?? 0);
   });
-  const topPicks   = sorted.slice(0, 6);
+  const topPicks   = sorted.slice(0, 6).filter(_hasVoicingsForTier);
   const topPickSet = new Set(topPicks.map(i => `${i.root},${i.quality}`));
-  const rest       = _ideas.filter(i => !topPickSet.has(`${i.root},${i.quality}`));
+  const rest       = _ideas.filter(i => !topPickSet.has(`${i.root},${i.quality}`) && _hasVoicingsForTier(i));
 
   // Separate chromatic/outside from "Other Options"
   const chromatic = rest.filter(i => _intentGroup(i, _savedActiveKey) === 'color');
@@ -260,7 +477,7 @@ function _doRender() {
     ? `<div class="ideas-context-label">Following from <strong>${_savedLastChord.name}</strong></div>`
     : '';
 
-  let html = '<div id="chord-ideas-grid">';
+  let html = '';
 
   // ── Section 1: Top Picks (toggleable, open by default) ────────────────────
   html += `
@@ -300,10 +517,24 @@ function _doRender() {
     }
   }
 
-  // ── Section 3: Chromatic / Outside ────────────────────────────────────────
+  // ── Section 3: Slash Chords / Inversions ──────────────────────────────────
+  const slashIdeas = _getSlashIdeas(_savedActiveKey, _savedTuning);
+  if (slashIdeas.length > 0) {
+    html += `
+      <div class="ideas-section-header intent-color" data-action="toggle-group" data-group="slash">
+        <span class="ideas-section-arrow">${_slashOpen ? '▼' : '▶'}</span>
+        Slash Chords / Inversions <span class="ideas-section-count">${slashIdeas.length}</span>
+      </div>`;
+    if (_slashOpen) {
+      html += '<div class="idea-slash-blurb">First-inversion voicings — 3rd in the bass for smoother bass lines and voice leading.</div>';
+      html += '<div class="idea-cards-row">' + slashIdeas.map(i => _slashCardHtml(i, _savedTuning)).join('') + '</div>';
+    }
+  }
+
+  // ── Section 4: Chromatic / Outside ────────────────────────────────────────
   if (chromatic.length > 0) {
     html += `
-      <div class="ideas-section-header intent-color" data-action="toggle-group" data-group="chromatic">
+      <div class="ideas-section-header intent-chromatic" data-action="toggle-group" data-group="chromatic">
         <span class="ideas-section-arrow">${_chromaticOpen ? '▼' : '▶'}</span>
         Chromatic / Outside <span class="ideas-section-count">${chromatic.length}</span>
       </div>`;
@@ -312,9 +543,10 @@ function _doRender() {
     }
   }
 
-  html += '</div>';
-
-  panel.innerHTML = '<div class="section-label">Next Chord Ideas</div>' + contextLabel + html;
+  const contextEl = document.getElementById('chord-ideas-context');
+  if (contextEl) contextEl.innerHTML = contextLabel;
+  const gridEl = document.getElementById('chord-ideas-grid');
+  if (gridEl) gridEl.innerHTML = html;
 
   // Hover listeners
   panel.querySelectorAll('.idea-card').forEach(card => {
@@ -386,6 +618,9 @@ function _handleGridClick(e) {
     } else if (group === 'chromatic') {
       _chromaticOpen = !_chromaticOpen;
       if (_chromaticOpen) _topPicksOpen = false;
+    } else if (group === 'slash') {
+      _slashOpen = !_slashOpen;
+      if (_slashOpen) _topPicksOpen = false;
     }
     _doRender();
     return;
@@ -397,26 +632,6 @@ function _handleGridClick(e) {
     e.stopPropagation();
     const frets = ideaPlayBtn.dataset.frets.split(',').map(Number);
     playChord(frets, _savedTuning);
-    return;
-  }
-
-  // ── Add to Progression button ─────────────────────────
-  const addBtn = e.target.closest('.idea-add-btn');
-  if (addBtn) {
-    e.stopPropagation();
-    const root    = parseInt(addBtn.dataset.root, 10);
-    const quality = addBtn.dataset.quality;
-    const idea = _ideas.find(i => i.root === root && i.quality === quality)
-              ?? { root, quality, name: addBtn.dataset.name ?? '' };
-    const allV   = generateVoicings(root, quality, _savedTuning);
-    const maxRnk = _IDEA_DIFF_RANK[_savedDifficultyFilter] ?? 2;
-    const filtV  = allV.filter(v => (_IDEA_DIFF_RANK[v.difficulty ?? 'advanced']) <= maxRnk);
-    const pool   = filtV.length > 0 ? filtV : allV;
-    const frets  = pool[_expandedVoicingIdx]?.frets ?? pool[0]?.frets;
-    _expandedCardKey    = null;
-    _expandedVoicingIdx = 0;
-    _savedOnLock?.(null);
-    if (frets && _savedOnAdd) _savedOnAdd(idea, frets);
     return;
   }
 
@@ -434,7 +649,8 @@ function _handleGridClick(e) {
   const header = e.target.closest('[data-action="toggle"]');
   if (header) {
     const card    = header.closest('.idea-card');
-    const cardKey = card.dataset.cardkey;
+    const cardKey = card?.dataset.cardkey ?? header.dataset.cardkey;
+    if (!cardKey) return;
     if (_expandedCardKey === cardKey) {
       _expandedCardKey = null;
       _savedOnHover?.(null);
@@ -442,7 +658,12 @@ function _handleGridClick(e) {
     } else {
       _expandedCardKey    = cardKey;
       _expandedVoicingIdx = 0;
-      const idea = _ideas.find(i => `${i.root},${i.quality}` === cardKey);
+      // Look up in both regular ideas and slash ideas
+      let idea = _ideas.find(i => `${i.root},${i.quality}` === cardKey);
+      if (!idea && cardKey.startsWith('slash:')) {
+        const slashIdeas = _getSlashIdeas(_savedActiveKey, _savedTuning);
+        idea = slashIdeas.find(i => `slash:${i.root},${i.quality}` === cardKey);
+      }
       _savedOnHover?.(null);
       _savedOnLock?.(idea ?? null);
     }
@@ -460,7 +681,15 @@ function _fitLabel(fit) {
 
 // ─── Inline expansion HTML ────────────────────────────────────────────────────
 
-const _IDEA_DIFF_RANK = { beginner: 0, intermediate: 1, advanced: 2 };
+const _IDEA_DIFF_RANK = { basic: 0, color: 1, advanced: 2 };
+
+/** Returns true if this idea has at least one voicing within the current tier. */
+function _hasVoicingsForTier(idea) {
+  const allV   = generateVoicings(idea.root, idea.quality, _savedTuning);
+  if (!allV?.length) return false;
+  const maxRnk = _IDEA_DIFF_RANK[_savedDifficultyFilter] ?? 2;
+  return allV.some(v => (_IDEA_DIFF_RANK[v.difficulty ?? 'advanced']) <= maxRnk);
+}
 
 function _buildExpansion(idea) {
   const allVoicings = generateVoicings(idea.root, idea.quality, _savedTuning);
@@ -475,15 +704,15 @@ function _buildExpansion(idea) {
 
   // If no voicings match the difficulty level, show an informative message
   if (!voicings) {
-    const levelLabel = _savedDifficultyFilter.charAt(0).toUpperCase() + _savedDifficultyFilter.slice(1);
-    const nextLevel  = _savedDifficultyFilter === 'beginner' ? 'Intermediate' : 'Advanced';
+    const levelLabel = { basic: 'Basic', color: 'Color', advanced: 'Advanced' }[_savedDifficultyFilter] ?? _savedDifficultyFilter;
+    const nextLevel  = _savedDifficultyFilter === 'basic' ? 'Color' : 'Advanced';
     return `
       <div class="idea-expansion">
         <p class="idea-no-voicings">No ${levelLabel} shape available — switch to ${nextLevel} to see voicings.</p>
       </div>`;
   }
 
-  const cards = voicings.slice(0, 6).map((v, i) => {
+  const cards = voicings.slice(0, 9).map((v, i) => {
     const selected = i === _expandedVoicingIdx;
     return `
       <div class="idea-voicing-card${selected ? ' idea-voicing-selected' : ''}"
@@ -498,10 +727,6 @@ function _buildExpansion(idea) {
   return `
     <div class="idea-expansion">
       <div class="idea-voicings-grid">${cards}</div>
-      <button class="idea-add-btn btn btn-accent btn-sm"
-              data-root="${idea.root}" data-quality="${idea.quality}" data-name="${idea.name}">
-        + Add to Progression
-      </button>
     </div>
   `;
 }

@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <radialGradient id="tbg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#2d1a5e"/>
+      <stop offset="100%" stop-color="#130a2a"/>
+    </radialGradient>
+    <linearGradient id="tring" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#ff5ecb"/>
+      <stop offset="35%"  stop-color="#7b5cfa"/>
+      <stop offset="70%"  stop-color="#00c8ff"/>
+      <stop offset="100%" stop-color="#ff5ecb"/>
+    </linearGradient>
+    <filter id="tglow">
+      <feGaussianBlur stdDeviation="2.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <!-- Glow ring -->
+  <circle cx="50" cy="50" r="47" fill="none" stroke="url(#tring)" stroke-width="5" filter="url(#tglow)" opacity="0.9"/>
+  <!-- Background -->
+  <circle cx="50" cy="50" r="44" fill="url(#tbg)"/>
+  <!-- Inner border -->
+  <circle cx="50" cy="50" r="44" fill="none" stroke="url(#tring)" stroke-width="1.5" opacity="0.6"/>
+
+  <!-- Tuning peg body (brass arm) -->
+  <rect x="36" y="54" width="28" height="9" rx="4" fill="#c9922a" stroke="#e8b84b" stroke-width="1"/>
+  <!-- Peg post -->
+  <rect x="47" y="42" width="6" height="18" rx="3" fill="#a07020" stroke="#d4a840" stroke-width="1"/>
+  <!-- Peg knob (black cap) -->
+  <rect x="42" y="32" width="16" height="14" rx="5" fill="#1e1e1e" stroke="#555" stroke-width="1.2"/>
+  <rect x="45" y="35" width="10" height="8" rx="3" fill="#2a2a2a"/>
+  <!-- Gear wheel -->
+  <circle cx="50" cy="67" r="7" fill="#b08030" stroke="#e8b84b" stroke-width="1.2"/>
+  <circle cx="50" cy="67" r="3.5" fill="#1a0a2e"/>
+  <!-- Sparkle dots -->
+  <circle cx="22" cy="28" r="1.5" fill="#ffdd55" opacity="0.9"/>
+  <circle cx="78" cy="25" r="2"   fill="#ff88dd" opacity="0.8"/>
+  <circle cx="80" cy="72" r="1.5" fill="#55eeff" opacity="0.9"/>
+  <circle cx="18" cy="68" r="1"   fill="#aa88ff" opacity="0.8"/>
+  <circle cx="30" cy="82" r="1.2" fill="#ffdd55" opacity="0.7"/>
+  <circle cx="68" cy="82" r="1"   fill="#ff88dd" opacity="0.7"/>
+</svg>
