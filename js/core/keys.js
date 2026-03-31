@@ -639,7 +639,7 @@ export function getChordIdeas(activeKey, progression, lastChord = null) {
   }
 
   // ── Diatonic 7th chords ────────────────────────────────────────────────────
-  const suffix7Map = { maj7: 'maj7', dom7: '7', min7: '7', hdim7: 'ø7' };
+  const suffix7Map = { maj7: 'maj7', dom7: '7', min7: '7', hdim7: 'm7(♭5)' };
   for (const dc of activeKey.diatonicChords) {
     const q7 = _triad7Quality(dc.quality, dc.degree, activeKey.quality);
     if (!q7) continue;

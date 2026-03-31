@@ -107,7 +107,7 @@ export const CHORD_SUFFIXES = {
   maj: '', min: 'm', dim: '°', aug: '+',
   sus2: 'sus2', sus4: 'sus4', dom7sus4: '7sus4',
   maj7: 'maj7', dom7: '7', min7: 'm7',
-  dim7: '°7', hdim7: 'ø7', minmaj7: 'mMaj7',
+  dim7: '°7', hdim7: 'm7(♭5)', minmaj7: 'mMaj7',
   maj6: '6', min6: 'm6',
   add9: 'add9', dom9: '9', pow5: '5',
   maj9: 'maj9', min9: 'm9', maj7s11: 'maj7♯11',
@@ -493,10 +493,12 @@ function _generateAlgorithmicVoicings(rootPitch, targetPitches, tuning, spanLimi
         let bestStr = -1, bestFret = -1, bestDist = Infinity;
         for (let s = bassString + 1; s < 6; s++) {
           if (usedStr.has(s)) continue;
-          // Always include open string (f=0) plus the fretted window — this ensures
-          // baritone tunings can use open treble strings even when the bass root is high.
+          // Search from open (f=0) through rootFret+spanLimit; also allow up to spanLimit
+          // frets below the root so alternate tunings can find chord tones that sit lower
+          // on the neck than the root. The span check at the end enforces the real limit.
+          const loFret = Math.max(1, rootFret - spanLimit);
           for (let f = 0; f <= rootFret + spanLimit; f++) {
-            if (f !== 0 && f < Math.max(1, rootFret - 1)) continue;
+            if (f !== 0 && f < loFret) continue;
             if (normalizePitch(tuning[s] + f) === tp) {
               // Open strings are always preferred over fretted notes
               const dist = f === 0 ? -1 : Math.abs(f - rootFret);
@@ -516,9 +518,9 @@ function _generateAlgorithmicVoicings(rootPitch, targetPitches, tuning, spanLimi
         if (usedStr.has(s)) continue;
         let bestFret = -1, bestDist = Infinity;
         for (const tp of targetPitches) {
-          // Always include open string (f=0) plus the fretted window
+          const loFret = Math.max(1, rootFret - spanLimit);
           for (let f = 0; f <= rootFret + spanLimit; f++) {
-            if (f !== 0 && f < Math.max(1, rootFret - 1)) continue;
+            if (f !== 0 && f < loFret) continue;
             if (normalizePitch(tuning[s] + f) === tp) {
               // Open strings are always preferred over fretted notes
               const dist = f === 0 ? -1 : Math.abs(f - rootFret);

@@ -53,16 +53,33 @@ export function renderScaleSuggestions(activeKey, tuning, onActivate, progressio
     requestAnimationFrame(() => container.classList.add('panel-reveal'));
   }
   const suggestions = getScaleSuggestions(activeKey.quality);
-  const suggestedTypes = new Set(suggestions.map(s => s.type));
+  const reasonMap = Object.fromEntries(suggestions.map(s => [s.type, s.reason]));
+  const allTypes = Object.keys(SCALE_FORMULAS);
+
+  let topTypes, restTypes;
+
+  if (progression.length > 0) {
+    // Sort all scales by fit rating so the best matches appear first
+    const ratingScore = { green: 2, yellow: 1, red: 0 };
+    const rated = allTypes.map(type => {
+      const { rating } = rateScaleForProgression(type, activeKey.root, progression);
+      return { type, score: ratingScore[rating] ?? 0 };
+    });
+    rated.sort((a, b) => b.score - a.score);
+    topTypes  = rated.slice(0, suggestions.length).map(r => r.type);
+    restTypes = rated.slice(suggestions.length).map(r => r.type);
+  } else {
+    topTypes  = suggestions.map(s => s.type);
+    const topSet = new Set(topTypes);
+    restTypes = allTypes.filter(t => !topSet.has(t));
+  }
 
   // Build top-pick cards
-  const topCardsHtml = suggestions.map(({ type, reason }) => {
-    return _buildScaleCard(type, reason, activeKey, tuning, progression, false, capoFret);
+  const topCardsHtml = topTypes.map(type => {
+    return _buildScaleCard(type, reasonMap[type] ?? '', activeKey, tuning, progression, false, capoFret);
   }).filter(Boolean).join('');
 
-  // Build full list (all remaining scales not in suggestions)
-  const allTypes = Object.keys(SCALE_FORMULAS);
-  const restTypes = allTypes.filter(t => !suggestedTypes.has(t));
+  // Build extra cards
   const restCardsHtml = restTypes.map(type => {
     return _buildScaleCard(type, '', activeKey, tuning, progression, true, capoFret);
   }).filter(Boolean).join('');
