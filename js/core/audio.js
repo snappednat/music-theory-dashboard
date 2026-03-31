@@ -853,7 +853,8 @@ function _playNoteElectricSampled(ctx, midiNote, startTime, stringIdx = 0, isCho
   }
 
   // ── Detune widener (chord mode only) — ±3 cents at 4% mix, panned hard L/R ─
-  // Two additional buffer sources from the same sample create a subtle chorus-free width
+  // Two additional buffer sources from the same sample create a subtle chorus-free width.
+  // dp.disconnect() in onended prevents dp→_masterComp from accumulating as orphaned nodes.
   if (isChord) {
     for (const [cents, side] of [[-3, -1], [+3, 1]]) {
       const ds = ctx.createBufferSource();
@@ -864,6 +865,7 @@ function _playNoteElectricSampled(ctx, midiNote, startTime, stringIdx = 0, isCho
       const dp = ctx.createStereoPanner(); dp.pan.value = side;
       ds.connect(dg); dg.connect(dp); dp.connect(_masterComp);
       ds.start(startTime + jitter); ds.stop(stopAt);
+      ds.onended = () => { dg.disconnect(); dp.disconnect(); };
       _scheduledNodes.push(ds);
     }
   }
@@ -957,11 +959,13 @@ function _playNoteDistortionSampled(ctx, midiNote, startTime, stringIdx = 0, isC
   preGain.gain.value = 4.0;  // 10^(12/20)
   bottomShelf.connect(preGain);
 
-  // aa50 waveshaper — custom rational soft-clip (no oversample: '4x' would leave
-  // browser-internal IIR anti-alias filter state alive after src.stop() until GC)
+  // aa50 waveshaper — custom rational soft-clip. oversample:'none' so the node has
+  // no browser-internal IIR anti-alias filter state that stays alive after src.stop()
+  // until GC — '2x'/'4x' both leave that state, producing a tail that gets amplified
+  // through preGain×4 and causes pops in the shared _elecComp/_masterComp nodes.
   const aa50ws = ctx.createWaveShaper();
   aa50ws.curve = _makeAa50WaveshapeCurve();
-  aa50ws.oversample = '2x';
+  aa50ws.oversample = 'none';
   preGain.connect(aa50ws);
 
   // Presence: peaking +3 dB @ 3500 Hz, Q=0.65 (Presence ~5/10 → mid-range of 3–4.5 kHz)
@@ -994,9 +998,12 @@ function _playNoteDistortionSampled(ctx, midiNote, startTime, stringIdx = 0, isC
   trebleEQ.connect(outputGain);
 
   // ── Reverb send — taps before cab sim (brighter wet signal) ──────────────
+  // Track rv so onended can disconnect it — otherwise the outputGain→rv→_reverbSendElec
+  // path keeps the entire node chain alive (preventing GC) after the note ends.
+  let _rv = null;
   if (_reverbSendElec) {
-    const rv = ctx.createGain(); rv.gain.value = 0.12;
-    outputGain.connect(rv); rv.connect(_reverbSendElec);
+    _rv = ctx.createGain(); _rv.gain.value = 0.12;
+    outputGain.connect(_rv); _rv.connect(_reverbSendElec);
   }
 
   // ── Stage 3: Cabinet sim — Black Tolex 2×12 + Dynamic 57 ─────────────────
@@ -1019,12 +1026,21 @@ function _playNoteDistortionSampled(ctx, midiNote, startTime, stringIdx = 0, isC
   cabNotch.connect(sm57Air);
 
   // ── Safety limiter → per-string pan → output ─────────────────────────────
-  // Hard-clips any residual extreme value before it can reach the shared _elecComp /
-  // _masterComp nodes. Those nodes are long-lived — NaN in their IIR state permanently
-  // silences all tones until the AudioContext is recreated. tanh(10x)/tanh(10) ≈ hard
-  // clip at ±1 with a soft knee; aurally transparent at normal signal levels.
-  // safetyClip — oversample:'none' so it has no IIR state that could persist after disconnect
-  const safetyClip = _makeDistortionNode(ctx, 10);
+  // Hard-clips any residual extreme value (e.g. from peaking EQ resonance) before it
+  // reaches the long-lived _elecComp/_masterComp nodes — NaN in their IIR state would
+  // permanently silence all audio until the AudioContext is recreated.
+  //
+  // MUST be a unity-gain identity clipper — NOT _makeDistortionNode(ctx, 10).
+  // _makeDistortionNode normalises by tanh(amount), giving small-signal gain ≈ amount.
+  // At amount=10 that's a ×10 amplifier for quiet signals, which turns a softly decaying
+  // tail into persistent audible static. The identity WaveShaper maps x→x for |x|≤1 and
+  // clamps |x|>1 to ±1 (the Web Audio spec guarantees out-of-range inputs use the curve
+  // endpoints), so it is truly transparent at all normal signal levels.
+  const _safetyCurve = new Float32Array(256);
+  for (let i = 0; i < 256; i++) _safetyCurve[i] = (i * 2) / 255 - 1;
+  const safetyClip = ctx.createWaveShaper();
+  safetyClip.curve = _safetyCurve;
+  safetyClip.oversample = 'none';
   sm57Air.connect(safetyClip);
 
   const STRING_PAN = [-0.12, -0.08, -0.03, +0.03, +0.08, +0.12];
@@ -1034,9 +1050,14 @@ function _playNoteDistortionSampled(ctx, midiNote, startTime, stringIdx = 0, isC
   panNode.connect(_elecComp ?? _masterComp);
 
   // Track envGain for soft-stop (fade out on new chord) and disconnect on end.
+  // Also disconnect panNode and _rv to sever the entire per-note chain from the shared
+  // _elecComp/_masterComp/_reverbSendElec nodes — prevents orphaned chains from
+  // accumulating with decaying IIR state that pumps the shared compressors and causes pops.
   _activeDistEnvGains.push(envGain);
   src.onended = () => {
     envGain.disconnect();
+    panNode.disconnect();
+    if (_rv) _rv.disconnect();
     const idx = _activeDistEnvGains.indexOf(envGain);
     if (idx !== -1) _activeDistEnvGains.splice(idx, 1);
   };
