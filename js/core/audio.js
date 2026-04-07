@@ -16,13 +16,11 @@ const SAMPLE_PITCHES = [
   // ── Sub-bass baritone (C2): covers Drop C and below ──────────────────────
   { file: 'assets/audio/SO_GA_guitar_acoustic_note_C2.wav',          midi: 36 },  // C2
 
-  // ── Low register (E2–D3): GIO_CGTR classical guitar lownotes ─────────────
-  // Note: lownotes_F#, lownotes_C#, lownotes_D# all fail to load (# in URL) — omitted.
-  // SC_BG samples fill those gaps (Bb2, Db3).
-  { file: 'assets/audio/GIO_CGTR_classical_guitar_lownotes_E.wav',  midi: 40 },  // E2
-  { file: 'assets/audio/GIO_CGTR_classical_guitar_lownotes_F.wav',  midi: 41 },  // F2
-  { file: 'assets/audio/GIO_CGTR_classical_guitar_lownotes_G.wav',  midi: 43 },  // G2
-  // guitar_A.wav removed — chord recording, not a single note. A2 pitch-shifts from Bb2 (46).
+  // ── Low register (E2–D3) ─────────────────────────────────────────────────
+  // TC_SC docerola E2 is the anchor for all 6th-string low frets (E2–A2).
+  // F2 and G2 GIO samples removed so those frets pitch-shift from E2 for tonal consistency.
+  { file: 'assets/audio/TC_SC_docerola_open_string_elected_E.wav',  midi: 40 },  // E2 (6th string open)
+  // guitar_A.wav removed — chord recording, not a single note. A2 pitch-shifts from E2 (5 semitones).
   { file: 'assets/audio/SC_BG_guitar_acoustic_note_Bb2.wav',         midi: 46 },  // Bb2
   { file: 'assets/audio/GIO_CGTR_classical_guitar_lownotes_C.wav',  midi: 48 },  // C3
   { file: 'assets/audio/SC_BG_guitar_acoustic_note_Db3.wav',         midi: 49 },  // Db3
@@ -810,7 +808,7 @@ function _playNoteElectricSampled(ctx, midiNote, startTime, stringIdx = 0, isCho
 
   // ── EQ chain: HP → Peaking → Highshelf → LP ──────────────────────────────
   const hp = ctx.createBiquadFilter();
-  hp.type = 'highpass'; hp.frequency.value = 80; hp.Q.value = 0.7;  // was 95 — more body
+  hp.type = 'highpass'; hp.frequency.value = 45; hp.Q.value = 0.7;  // was 80 — E2 is 82 Hz, 80 Hz was cutting its fundamental
 
   const peaking = ctx.createBiquadFilter();
   peaking.type = 'peaking'; peaking.frequency.value = 1900; peaking.Q.value = 1.0;
@@ -1069,7 +1067,7 @@ function _playNoteDistortionSampled(ctx, midiNote, startTime, stringIdx = 0, isC
 
 // ─── Public API ──────────────────────────────────────────────────────────────
 
-export function playChord(selectedFrets, tuning) {
+export function playChord(selectedFrets, tuning, capoFret = 0) {
   const ctx        = _getCtx();
   const presetKey  = getTonePresetName();
   const isAcoustic   = presetKey === 'acoustic';
@@ -1078,15 +1076,15 @@ export function playChord(selectedFrets, tuning) {
 
   // Defer if the required sample bank isn't loaded yet
   if (isAcoustic && !_sampleBuffers && _samplesPromise) {
-    _samplesPromise.then(() => playChord(selectedFrets, tuning));
+    _samplesPromise.then(() => playChord(selectedFrets, tuning, capoFret));
     return;
   }
   if (isCleanElec && !_electricBuffers && _electricPromise) {
-    _electricPromise.then(() => playChord(selectedFrets, tuning));
+    _electricPromise.then(() => playChord(selectedFrets, tuning, capoFret));
     return;
   }
   if (isDistortion && !_electricBuffers && _electricPromise) {
-    _electricPromise.then(() => playChord(selectedFrets, tuning));
+    _electricPromise.then(() => playChord(selectedFrets, tuning, capoFret));
     return;
   }
 
@@ -1103,7 +1101,9 @@ export function playChord(selectedFrets, tuning) {
   let delay = 0;
   for (let s = 0; s <= 5; s++) {        // low E → high e (downstrum)
     if (selectedFrets[s] < 0) continue;
-    const midi = _midiForString(s, selectedFrets[s], tuning);
+    // Open strings (fret 0) sound at the capo fret when a capo is active
+    const effectiveFret = (selectedFrets[s] === 0 && capoFret > 0) ? capoFret : selectedFrets[s];
+    const midi = _midiForString(s, effectiveFret, tuning);
     const freq = 440 * Math.pow(2, (midi - 69) / 12);
     if (isAcoustic) {
       _playNoteSampled(ctx, midi, freq, now + delay);
