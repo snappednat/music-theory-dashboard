@@ -93,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Wire buttons
   document.getElementById('btn-play-progression')?.addEventListener('click', _toggleProgressionPlayback);
   document.getElementById('btn-play-current')?.addEventListener('click', () => {
-    if (AppState.selectedFrets.some(f => f >= 0)) playChord(AppState.selectedFrets, AppState.tuning);
+    if (AppState.selectedFrets.some(f => f >= 0)) playChord(AppState.selectedFrets, AppState.tuning, AppState.capoFret);
   });
   document.getElementById('btn-shift-down')?.addEventListener('click', () => _shiftChordShape(-1));
   document.getElementById('btn-shift-up')?.addEventListener('click',   () => _shiftChordShape(+1));
@@ -305,7 +305,7 @@ document.addEventListener('DOMContentLoaded', () => {
       e.stopPropagation();
       const idx    = parseInt(chipPlayBtn.dataset.idx, 10);
       const stored = AppState.progression[idx];
-      if (stored?.frets) playChord(stored.frets, AppState.tuning);
+      if (stored?.frets) playChord(stored.frets, AppState.tuning, AppState.capoFret);
       return;
     }
     const removeBtn = e.target.closest('.chip-remove');
